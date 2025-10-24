@@ -2,22 +2,18 @@
 
 import * as React from 'react'
 import {
-	AudioWaveform,
-	BookOpen,
-	Building,
+	Bubbles,
+	Calendar,
 	CircleGauge,
 	Frame,
-	GalleryVerticalEnd,
+	Layers2,
 	Map,
 	PieChart,
 	Settings2,
-	SquarePen,
-	SquareTerminal,
 	Users,
 } from 'lucide-react'
 
 import { NavUser } from '@/components/nav-user'
-import { TeamSwitcher } from '@/components/team-switcher'
 import {
 	Sidebar,
 	SidebarContent,
@@ -29,16 +25,7 @@ import {
 	SidebarMenu,
 	SidebarMenuItem,
 	SidebarMenuButton,
-	SidebarMenuSub,
-	SidebarMenuSubItem,
-	SidebarMenuSubButton,
 } from '@/components/ui/sidebar'
-import {
-	Collapsible,
-	CollapsibleContent,
-	CollapsibleTrigger,
-} from '@/components/ui/collapsible'
-import { ChevronRight } from 'lucide-react'
 import { Link, useLocation } from 'react-router-dom'
 
 
@@ -48,21 +35,18 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	return (
     	<Sidebar collapsible='icon' {...props}>
       		<SidebarHeader>
-        		<div className='mx-2 mt-2 group-data-[collapsible=icon]:ml-4'>
-					<TeamSwitcher teams={[
-						{
-							name: 'Imobiliária 1',
-							logo: GalleryVerticalEnd,
-							plan: 'Enterprise',
-						},
-						{
-							name: 'Imobiliária 2',
-							logo: AudioWaveform,
-							plan: 'Startup',
-						},
-					]} />
+        		<div className='mx-2 mt-2 group-data-[collapsible=icon]:ml-4 flex items-center gap-4'>
+					<div className='flex h-8 w-8 items-center justify-center ml-3'>
+						<Bubbles className='h-6 w-6 text-black' />
+					</div>
+					<div className='grid flex-1 text-left text-sm leading-tight'>
+						<span className='truncate font-semibold font-inter'>Lava Logo</span>
+					</div>
 				</div>
       		</SidebarHeader>
+			
+			<div className='mt-2 mb-4 mx-9 h-[1px] bg-[#E5E7EB]'/>
+
 			<SidebarContent className='mx-3'>
 				<SidebarGroup>
 					<SidebarGroupLabel>Operacional</SidebarGroupLabel>
@@ -74,34 +58,45 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 									<div className='w-[21px] h-[21px]'>
 										<CircleGauge size={21} />
 									</div>
-									<span className='pl-2'>Dashboard</span>
+									<span className='pl-2 font-inter'>Dashboard</span>
 								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 
 						<SidebarMenuItem>
-							<SidebarMenuButton asChild tooltip='Contratos'>
-								<Link to='/'>
+							<SidebarMenuButton asChild tooltip='Agendamentos' data-active={location.pathname === '/bookings'}>
+								<Link to='/bookings'>
 									<div className='w-[21px] h-[21px]'>
-										<SquarePen size={21} />
+										<Calendar size={21} />
 									</div>
-									<span className='pl-2'>Contratos</span>
+									<span className='pl-2 font-inter'>Agendamentos</span>
 								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 
 						<SidebarMenuItem>
-							<SidebarMenuButton asChild tooltip='Imobiliárias' data-active={location.pathname === '/imobiliarias'}>
-								<Link to='/imobiliarias'>
-								<div className='w-[21px] h-[21px]'>
-									<Building size={21} />
-								</div>
-									<span className='pl-2'>Imobiliárias</span>
+							<SidebarMenuButton asChild tooltip='Serviços' data-active={location.pathname === '/services'}>
+								<Link to='/services'>
+									<div className='w-[21px] h-[21px]'>
+										<Layers2 size={21} />
+									</div>
+									<span className='pl-2 font-inter'>Serviços</span>
 								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 
-						<Collapsible asChild className='group/collapsible'>
+						<SidebarMenuItem>
+							<SidebarMenuButton asChild tooltip='Configurações' data-active={location.pathname === '/settings'}>
+								<Link to='/settings'>
+									<div className='w-[21px] h-[21px]'>
+										<Settings2 size={21} />
+									</div>
+									<span className='pl-2 font-inter'>Configurações</span>
+								</Link>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+
+						{/* <Collapsible asChild className='group/collapsible'>
 							<SidebarMenuItem>
 								<CollapsibleTrigger asChild>
 									<SidebarMenuButton tooltip='Clientes'>
@@ -145,7 +140,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 									</SidebarMenuSub>
 								</CollapsibleContent>
 							</SidebarMenuItem>
-						</Collapsible>	
+						</Collapsible>	 */}
 					</SidebarMenu>
 				</SidebarGroup>
 

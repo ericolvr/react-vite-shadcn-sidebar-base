@@ -27,7 +27,7 @@ export function Header({ breadcrumbs, actions }: HeaderProps) {
 	const { isDark, toggleTheme } = useTheme()
 
 	return (
-		<header className='flex h-16 shrink-0 items-center gap-2 px-8  flex-row justify-between'>
+		<header className='flex h-[65px] shrink-0 items-center gap-2  flex-row justify-between border-b border-[#E5E7EB] mx-8'>
 			<div className='flex items-center'>
 				<SidebarTrigger className='-ml-1' />
 				<Separator orientation='vertical' className='mr-2 h-4' />
