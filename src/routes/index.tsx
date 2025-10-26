@@ -11,6 +11,8 @@ import { Vehicles } from '@/pages/vehicles'
 import { VehiclesEdit } from '@/pages/vehicles/edit'
 import { ClientsEdit } from '@/pages/clients/edit'
 import { ServicesEdit } from '@/pages/services/edit'
+import { Loyalty } from '@/pages/loyalty'
+import { LoyaltyDashboard } from '@/pages/loyalty/dashboard'
 import { AuthProvider } from '@/contexts'
 import { ThemeProvider } from '@/contexts/theme-context'
 
@@ -32,6 +34,8 @@ export function AppRoutes() {
                         <Route path="/clients/edit/:id" element={<ClientsEdit />} />
                         <Route path="/vehicles" element={<Vehicles />} />
                         <Route path="/vehicles/edit/:id" element={<VehiclesEdit />} />
+                        <Route path="/loyalty" element={<Loyalty />} />
+                        <Route path="/loyalty/dashboard" element={<LoyaltyDashboard />} />
                     </Routes>
                 </BrowserRouter>
             </AuthProvider>

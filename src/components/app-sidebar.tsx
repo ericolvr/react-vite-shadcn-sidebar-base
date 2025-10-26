@@ -7,6 +7,7 @@ import {
 	CarFront,
 	CircleGauge,
 	Frame,
+	Gift,
 	Layers2,
 	Map,
 	PieChart,
@@ -104,6 +105,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 										<Layers2 size={21} />
 									</div>
 									<span className='pl-2 font-inter'>Serviços</span>
+								</Link>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+
+						<SidebarMenuItem>
+							<SidebarMenuButton asChild tooltip='Fidelidade' data-active={location.pathname === '/loyalty'}>
+								<Link to='/loyalty'>
+									<div className='w-[21px] h-[21px]'>
+										<Gift size={21} />
+									</div>
+									<span className='pl-2 font-inter'>Fidelidade</span>
 								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
