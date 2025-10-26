@@ -4,6 +4,7 @@ import * as React from 'react'
 import {
 	Bubbles,
 	Calendar,
+	CarFront,
 	CircleGauge,
 	Frame,
 	Layers2,
@@ -70,6 +71,28 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 										<Calendar size={21} />
 									</div>
 									<span className='pl-2 font-inter'>Agendamentos</span>
+								</Link>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+
+						<SidebarMenuItem>
+							<SidebarMenuButton asChild tooltip='Veículos' data-active={location.pathname === '/vehicles'}>
+								<Link to='/vehicles'>
+									<div className='w-[21px] h-[21px]'>
+										<CarFront size={22} />
+									</div>
+									<span className='pl-2 font-inter'>Veículos</span>
+								</Link>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+
+						<SidebarMenuItem>
+							<SidebarMenuButton asChild tooltip='Clientes' data-active={location.pathname === '/clien'}>
+								<Link to='/clients'>
+									<div className='w-[21px] h-[21px]'>
+										<Users size={21} />
+									</div>
+									<span className='pl-2 font-inter'>Clientes</span>
 								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
