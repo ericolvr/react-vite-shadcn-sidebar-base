@@ -75,10 +75,10 @@ class ServicesService {
 	}
 
 	// Buscar um serviço específico
-	async getService(companyId: string, serviceId: string): Promise<ServiceResponse> {
+	async getService(serviceId: string): Promise<ServiceResponse> {
 		try {
 			const response: AxiosResponse<ServiceResponse> = await axios.get(
-				`${BASE_URL}/companies/${companyId}/services/${serviceId}`
+				`${BASE_URL}/services/${serviceId}`
 			)
 			return response.data
 		} catch (error: any) {
@@ -110,10 +110,10 @@ class ServicesService {
 	}
 
 	// Atualizar serviço existente
-	async updateService(companyId: string, serviceId: string, data: ServiceData): Promise<ServiceResponse> {
+	async updateService(serviceId: string, data: ServiceData): Promise<ServiceResponse> {
 		try {
 			const response: AxiosResponse<ServiceResponse> = await axios.put(
-				`${BASE_URL}/companies/${companyId}/services/${serviceId}`,
+				`${BASE_URL}/services/${serviceId}`,
 				data
 			)
 			return response.data
@@ -128,10 +128,10 @@ class ServicesService {
 	}
 
 	// Deletar serviço
-	async deleteService(companyId: string, serviceId: string): Promise<void> {
+	async deleteService(serviceId: string): Promise<void> {
 		try {
 			await axios.delete(
-				`${BASE_URL}/companies/${companyId}/services/${serviceId}`
+				`${BASE_URL}/services/${serviceId}`
 			)
 		} catch (error: any) {
 			const apiError: ApiError = {

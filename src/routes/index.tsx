@@ -10,6 +10,7 @@ import { Vehicles } from '@/pages/vehicles'
 // import { VehiclesAdd } from '@/pages/vehicles/add'
 import { VehiclesEdit } from '@/pages/vehicles/edit'
 import { ClientsEdit } from '@/pages/clients/edit'
+import { ServicesEdit } from '@/pages/services/edit'
 import { AuthProvider } from '@/contexts'
 import { ThemeProvider } from '@/contexts/theme-context'
 
@@ -25,6 +26,7 @@ export function AppRoutes() {
                         <Route path="/bookings" element={<Bookings />} />
                         <Route path="/services" element={<Services />} />
                         <Route path="/services/add" element={<ServicesAdd />} />
+                        <Route path="/services/edit/:id" element={<ServicesEdit />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="/clients" element={<Clients />} />
                         <Route path="/clients/edit/:id" element={<ClientsEdit />} />

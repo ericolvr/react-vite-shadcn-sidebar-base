@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Header } from '@/components/header'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
@@ -8,6 +9,7 @@ import { Loader2, MoveLeft, MoveRight } from 'lucide-react'
 import { servicesService } from './service'
 
 export function Services() {
+	const nav = useNavigate()
 	const [services, setServices] = useState<Service[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
@@ -56,8 +58,7 @@ export function Services() {
 	}
 
 	const handleEdit = (id: string) => {
-		console.log('Editar serviço:', id)
-		// TODO: Implementar navegação para edição
+		nav(`/services/edit/${id}`)
 	}
 
 	const handleView = (id: string) => {
