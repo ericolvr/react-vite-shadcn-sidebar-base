@@ -32,6 +32,27 @@ export type ApiError = {
 
 class CompanySettingsService {
 
+	// Verificar se configurações existem
+	async checkSettingsExists(companyId: string): Promise<boolean> {
+		try {
+			const response: AxiosResponse<{ exists: boolean }> = await axios.get(
+				`${BASE_URL}/companies/${companyId}/settings/exists`
+			)
+			return response.data.exists
+		} catch (error: any) {
+			// Se der erro 404, significa que não existe
+			if (error.response?.status === 404) {
+				return false
+			}
+			const apiError: ApiError = {
+				message: error.response?.data?.message || 'Erro ao verificar configurações',
+				status: error.response?.status || 500,
+				details: error.response?.data
+			}
+			throw apiError
+		}
+	}
+
 	// Buscar configurações da empresa
 	async getSettings(companyId: string): Promise<CompanySettingsResponse> {
 		try {

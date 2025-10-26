@@ -113,32 +113,48 @@ export function Settings() {
 	const [isLoading, setIsLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const [success, setSuccess] = useState(false)
+	const [settingsExist, setSettingsExist] = useState<boolean | null>(null)
+	const [isCheckingSettings, setIsCheckingSettings] = useState(true)
 
 	// TODO: Obter companyId do contexto de autenticação
-	const companyId = '1' // Temporário - deve vir do contexto/JWT
+	const companyId = '3' // Alterado para 3 conforme URLs fornecidas
 
-	// Carregar configurações existentes ao montar o componente
+	// Verificar se configurações existem e carregar se necessário
 	useEffect(() => {
-		const loadSettings = async () => {
+		const checkAndLoadSettings = async () => {
 			try {
-				const settings = await companySettingsService.getSettings(companyId)
-				form.reset({
-					startWorkWeekday: settings.startWorkWeekday,
-					endWorkWeekday: settings.endWorkWeekday,
-					startWorkWeekend: settings.startWorkWeekend,
-					endWorkWeekend: settings.endWorkWeekend,
-					site: settings.site || '',
-					email: settings.email || '',
-					phone: settings.phone || '',
-					mobile: settings.mobile || ''
-				})
+				setIsCheckingSettings(true)
+				setError(null)
+				
+				// Verificar se configurações existem
+				const exists = await companySettingsService.checkSettingsExists(companyId)
+				setSettingsExist(exists)
+				
+				if (exists) {
+					// Se existir, carregar os dados para edição
+					const settings = await companySettingsService.getSettings(companyId)
+					form.reset({
+						startWorkWeekday: settings.startWorkWeekday,
+						endWorkWeekday: settings.endWorkWeekday,
+						startWorkWeekend: settings.startWorkWeekend,
+						endWorkWeekend: settings.endWorkWeekend,
+						site: settings.site || '',
+						email: settings.email || '',
+						phone: settings.phone || '',
+						mobile: settings.mobile || ''
+					})
+				}
+				// Se não existir, manter valores padrão do formulário (modo criação)
+				
 			} catch (err) {
-				// Se não existir configuração, manter valores padrão
-				console.log('Configurações não encontradas, usando valores padrão')
+				setError(err instanceof Error ? err.message : 'Erro ao verificar configurações')
+				setSettingsExist(false) // Em caso de erro, assumir que não existe
+			} finally {
+				setIsCheckingSettings(false)
 			}
 		}
 
-		loadSettings()
+		checkAndLoadSettings()
 	}, [form, companyId])
 
 	const onSubmit = async (data: CompanySettingsForm) => {
@@ -155,12 +171,13 @@ export function Settings() {
 				mobile: data.mobile ? extractNumbers(data.mobile) : ''
 			}
 
-			// Tentar atualizar primeiro, se falhar, criar
-			try {
+			if (settingsExist) {
+				// Se configurações existem, fazer UPDATE (PUT)
 				await companySettingsService.updateSettings(companyId, settingsData)
-			} catch (updateError) {
-				// Se falhar ao atualizar, tentar criar
+			} else {
+				// Se configurações não existem, fazer CREATE (POST)
 				await companySettingsService.createSettings(companyId, settingsData)
+				setSettingsExist(true) // Atualizar estado para refletir que agora existe
 			}
 
 			setSuccess(true)
@@ -184,9 +201,6 @@ export function Settings() {
 				/>
 				<div className='flex flex-1 flex-col gap-4 mx-8 pt-0 mt-10 mb-8'>
 					<div className='flex-1 bg-white'>
-						
-
-						{/* Mensagens de feedback */}
 						{error && (
 							<div className='bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md mb-4'>
 								{error}
@@ -402,10 +416,17 @@ export function Settings() {
 									</Button>
 									<Button 
 										type="submit"
-										disabled={isLoading}
+										disabled={isLoading || isCheckingSettings}
 										className='bg-[#317CE5] hover:bg-[#2563eb] font-inter disabled:opacity-50 disabled:cursor-not-allowed'
 									>
-										{isLoading ? 'Salvando...' : 'Salvar Configurações'}
+										{isLoading 
+											? 'Salvando...' 
+											: isCheckingSettings 
+											? 'Carregando...'
+											: settingsExist 
+											? 'Atualizar' 
+											: 'Adicionar'
+										}
 									</Button>
 								</div>
 							</form>
