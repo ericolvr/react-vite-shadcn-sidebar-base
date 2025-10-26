@@ -87,7 +87,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 						</SidebarMenuItem>
 
 						<SidebarMenuItem>
-							<SidebarMenuButton asChild tooltip='Clientes' data-active={location.pathname === '/clien'}>
+							<SidebarMenuButton asChild tooltip='Clientes' data-active={location.pathname === '/clients'}>
 								<Link to='/clients'>
 									<div className='w-[21px] h-[21px]'>
 										<Users size={21} />

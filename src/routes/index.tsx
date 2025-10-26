@@ -6,6 +6,10 @@ import { Services } from '@/pages/services'
 import { ServicesAdd } from '@/pages/services/add'
 import { Settings } from '@/pages/settings'
 import { Clients } from '@/pages/clients'
+import { Vehicles } from '@/pages/vehicles'
+// import { VehiclesAdd } from '@/pages/vehicles/add'
+import { VehiclesEdit } from '@/pages/vehicles/edit'
+import { ClientsEdit } from '@/pages/clients/edit'
 import { AuthProvider } from '@/contexts'
 import { ThemeProvider } from '@/contexts/theme-context'
 
@@ -23,6 +27,9 @@ export function AppRoutes() {
                         <Route path="/services/add" element={<ServicesAdd />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="/clients" element={<Clients />} />
+                        <Route path="/clients/edit/:id" element={<ClientsEdit />} />
+                        <Route path="/vehicles" element={<Vehicles />} />
+                        <Route path="/vehicles/edit/:id" element={<VehiclesEdit />} />
                     </Routes>
                 </BrowserRouter>
             </AuthProvider>

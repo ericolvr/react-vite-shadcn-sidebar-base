@@ -4,13 +4,14 @@ import { AppSidebar } from '@/components/app-sidebar'
 import { Header } from '@/components/header'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { DataTable } from './data-table'
-import { columns, type Client } from './columns'
+import { columns, type Vehicle } from './columns'
 import { Loader2, MoveLeft, MoveRight } from 'lucide-react'
-import { clientsService } from './service'
+import { vehiclesService } from './service'
 
-export function Clients() {
+
+export function Vehicles() {
 	const nav = useNavigate()
-	const [clients, setClients] = useState<Client[]>([])
+	const [vehicles, setVehicles] = useState<Vehicle[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 	const [pagination, setPagination] = useState({
@@ -23,13 +24,13 @@ export function Clients() {
 	// Colunas para exportação CSV
 	const exportColumns = [
 		{ key: 'id', label: 'ID' },
-		{ key: 'name', label: 'Nome' },
-		{ key: 'phone', label: 'Telefone' },
-		{ key: 'address', label: 'Endereço' },
-		{ key: 'role', label: 'Tipo' },
+		{ key: 'model', label: 'Modelo' },
+		{ key: 'brand', label: 'Marca' },
+		{ key: 'plate', label: 'Placa' },
+		{ key: 'type', label: 'Tipo' },
 	]
 
-	const getClients = async (page: number = 1) => {
+	const getVehicles = async (page: number = 1) => {
 		try {
 			setLoading(true)
 			setError(null)
@@ -37,9 +38,9 @@ export function Clients() {
 			const limit = 20
 			const offset = (page - 1) * limit
 			console.log(`🔍 Fazendo chamada: page=${page}, limit=${limit}, offset=${offset}`)
-			const response = await clientsService.getClients(page, limit)
+			const response = await vehiclesService.getVehicles(page, limit)
 			console.log('📊 Resposta da API:', response)
-			setClients(response.clients)
+			setVehicles(response.vehicles)
 			setPagination({
 				page: response.page,
 				limit: response.limit,
@@ -48,7 +49,7 @@ export function Clients() {
 			})
 			
 		} catch (err: any) {
-			const errorMessage = err.message || 'Erro ao listar clientes'
+			const errorMessage = err.message || 'Erro ao listar veículos'
 			setError(errorMessage)
 		} finally {
 			setLoading(false)
@@ -56,23 +57,24 @@ export function Clients() {
 	}
 
 	const handleEdit = (id: string) => {
-		nav(`/clients/edit/${id}`)
+		
+		nav(`/vehicles/edit/${id}`)
 	}
 
 	const handlePreviousPage = () => {
 		if (pagination.page > 1) {
-			getClients(pagination.page - 1)
+			getVehicles(pagination.page - 1)
 		}
 	}
 
 	const handleNextPage = () => {
 		if (pagination.page < pagination.totalPages) {
-			getClients(pagination.page + 1)
+			getVehicles(pagination.page + 1)
 		}
 	}
 
 	useEffect(() => {
-		getClients()
+		getVehicles()
 	}, [])
 
 	return (
@@ -82,7 +84,7 @@ export function Clients() {
 				<Header 
 					breadcrumbs={[
 						{ label: 'Dashboard', href: '/dashboard' },
-						{ label: 'Clientes' }
+						{ label: 'Veículos' }
 					]}
 				/>
 				<div className='flex flex-1 flex-col gap-4 mx-8 pt-0 mt-10 mb-8'>
@@ -90,13 +92,13 @@ export function Clients() {
 						{loading ? (
 							<div className='flex items-center justify-center h-64'>
 								<Loader2 className='h-8 w-8 animate-spin' />
-								<span className='ml-2 text-lg'>Carregando clientes...</span>
+								<span className='ml-2 text-lg'>Carregando veículos...</span>
 							</div>
 						) : error ? (
 							<div className='flex flex-col items-center justify-center h-64'>
 								<p className='text-red-500 text-lg mb-4'>{error}</p>
 								<button 
-									onClick={() => getClients()}
+									onClick={() => getVehicles()}
 									className='px-4 py-2 bg-black text-white rounded hover:bg-gray-800'
 								>
 									Tentar Novamente
@@ -106,12 +108,12 @@ export function Clients() {
 							<div className='rounded-sm'>
 								<DataTable 
 									columns={columns(handleEdit)} 
-									data={clients}
-									searchPlaceholder="Filtrar por nome do cliente..."
-									searchColumn="name"
-									addUrl="/clients/add"
+									data={vehicles}
+									searchPlaceholder="Filtrar por placa do veículo..."
+									searchColumn="plate"
+									addUrl="/vehicles/add"
 									exportColumns={exportColumns}
-									filename="clientes"
+									filename="veiculos"
 									loading={loading}
 								/>
 								

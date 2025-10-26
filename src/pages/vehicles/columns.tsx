@@ -6,7 +6,7 @@ import {
     ArrowUpDown, 
     Pencil,
     Eye,
-    Car,
+    User,
     Loader2,
     X
 } from 'lucide-react'
@@ -19,40 +19,40 @@ import {
     SheetTrigger,
     SheetClose,
 } from '@/components/ui/sheet'
-import { type ClientResponse } from './service'
-import { vehiclesService, type VehicleResponse } from '../vehicles/service'
+import { type VehicleResponse } from './service'
+import { clientsService, type ClientResponse } from '../clients/service'
 
-// Tipo para clientes da API
-export type Client = ClientResponse
+// Tipo para veículos da API
+export type Vehicle = VehicleResponse
 
-// Componente interno para o drawer dos veículos
-const VehiclesDrawer = ({ client }: { client: Client }) => {
-    const [vehicles, setVehicles] = useState<VehicleResponse[]>([])
+// Componente interno para o drawer do cliente do veículo
+const ClientDrawer = ({ vehicle }: { vehicle: Vehicle }) => {
+    const [client, setClient] = useState<ClientResponse | null>(null)
     const [loading, setLoading] = useState(true)
 
-    const loadVehicles = async () => {
+    const loadClient = async () => {
         try {
             setLoading(true)
-            const clientVehicles = await vehiclesService.getVehiclesByClient(client.id.toString())
-            setVehicles(clientVehicles)
+            const vehicleClient = await clientsService.getClient(vehicle.client_id.toString())
+            setClient(vehicleClient)
         } catch (error) {
-            console.error('Erro ao carregar veículos:', error)
-            setVehicles([])
+            console.error('Erro ao carregar cliente:', error)
+            setClient(null)
         } finally {
             setLoading(false)
         }
     }
 
-    // Carregar veículos automaticamente quando o drawer abrir
+    // Carregar cliente automaticamente quando o drawer abrir
     React.useEffect(() => {
-        loadVehicles()
-    }, [client.id])
+        loadClient()
+    }, [vehicle.client_id])
 
     return (
         <SheetContent side="right" className="w-[500px] sm:w-[540px]">
             <SheetHeader className="border-b relative">
                 <SheetTitle className="text-lg font-bold pr-8">
-                    {client.name}
+                    {client?.name || 'Carregando...'}
                 </SheetTitle>
                 <SheetClose asChild>
                     <button className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
@@ -66,48 +66,43 @@ const VehiclesDrawer = ({ client }: { client: Client }) => {
                 {loading ? (
                     <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin mr-3" />
-                        <span className="text-gray-500">Carregando veículos...</span>
+                        <span className="text-gray-500">Carregando cliente...</span>
                     </div>
-                ) : vehicles.length > 0 ? (
+                ) : client ? (
                     <div className="border border-gray-200 rounded-md overflow-hidden">
                         <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
-                            <h3 className="text-sm font-semibold text-gray-900">Dados do Veículo</h3>
+                            <h3 className="text-sm font-semibold text-gray-900">Dados do Cliente</h3>
                         </div>
                         <div className="bg-white">
                             <table className="w-full text-sm border-collapse">
                                 <tbody>
-                                    {vehicles.map((vehicle, index) => (
-                                        <React.Fragment key={vehicle.id}>
-                                            <tr className="border-b border-gray-100">
-                                                <td className="px-4 py-3 text-gray-900 font-medium w-1/2 border-r border-gray-100">
-                                                    {vehicle.model}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-900 font-medium w-1/2">
-                                                    {vehicle.plate}
-                                                </td>
-                                            </tr>
-                                            <tr className={index < vehicles.length - 1 ? 'border-b border-gray-100' : ''}>
-                                                <td className="px-4 py-3 text-gray-900 w-1/2 border-r border-gray-100">
-                                                    {vehicle.brand}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-900 w-1/2">
-                                                    {vehicle.type === 'car' ? 'Carro' : 
-                                                     vehicle.type === 'motorcycle' ? 'Moto' : 
-                                                     vehicle.type === 'truck' ? 'Caminhão' : 
-                                                     vehicle.type}
-                                                </td>
-                                            </tr>
-                                        </React.Fragment>
-                                    ))}
+                                    <tr className="border-b border-gray-100">
+                                        <td className="px-4 py-3 text-gray-900 w-1/2 border-r border-gray-100">
+                                            {client.name}
+                                        </td>
+                                        <td className="px-4 py-3 text-gray-900 w-1/2">
+                                            {client.phone ? client.phone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3') : '-'}
+                                        </td>
+                                    </tr>
+                                    <tr className="border-b border-gray-100">
+                                        <td className="px-4 py-3 text-gray-900 w-full" colSpan={2}>
+                                            {client.address || '-'}
+                                        </td>
+                                    </tr>
+                                    <tr className="border-b border-gray-100">
+                                        <td className="px-4 py-3 text-gray-900 w-full" colSpan={2}>
+                                            {client.role === 1 ? 'Cliente' : client.role === 2 ? 'VIP' : client.role === 3 ? 'Premium' : 'Cliente'}
+                                        </td>
+                                    </tr>
                                 </tbody>
                             </table>
                         </div>
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <Car className="h-12 w-12 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum veículo encontrado</h3>
-                        <p className="text-gray-500">Este cliente ainda não possui veículos cadastrados.</p>
+                        <User className="h-12 w-12 text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Cliente não encontrado</h3>
+                        <p className="text-gray-500">Não foi possível carregar os dados do cliente.</p>
                     </div>
                 )}
             </div>
@@ -117,9 +112,9 @@ const VehiclesDrawer = ({ client }: { client: Client }) => {
 
 export const columns = (
     onEdit?: (id: string) => void
-): ColumnDef<Client>[] => [
+): ColumnDef<Vehicle>[] => [
     {
-        accessorKey: 'name',
+        accessorKey: 'plate',
         header: ({ column }) => {
             return (
                 <Button
@@ -127,15 +122,15 @@ export const columns = (
                     onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
                     className='font-bold text-[12.5px] hover:bg-transparent'
                 >
-                    NOME
+                    PLACA
                     <ArrowUpDown className='ml-2 h-4 w-4' />
                 </Button>
             )
         },
-        cell: ({ row }) => <div className='pl-3 text-[15px] font-semibold'>{row.getValue('name')}</div>,
+        cell: ({ row }) => <div className='pl-3 text-[15px]'>{row.getValue('plate')}</div>,
     },
     {
-        accessorKey: 'phone',
+        accessorKey: 'model',
         header: ({ column }) => {
             return (
                 <Button
@@ -143,20 +138,15 @@ export const columns = (
                     onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
                     className='font-bold text-[12.5px] hover:bg-transparent'
                 >
-                    TELEFONE
+                    MODELO
                     <ArrowUpDown className='ml-2 h-4 w-4' />
                 </Button>
             )
         },
-        cell: ({ row }) => {
-            const phone = row.getValue('phone') as string
-            // Formatar telefone: 11988259998 -> (11) 98825-9998
-            const formatted = phone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3')
-            return <div className='pl-3 text-[15px]'>{formatted}</div>
-        },
+        cell: ({ row }) => <div className='pl-3 text-[15px] font-semibold'>{row.getValue('model')}</div>,
     },
     {
-        accessorKey: 'address',
+        accessorKey: 'brand',
         header: ({ column }) => {
             return (
                 <Button
@@ -164,22 +154,16 @@ export const columns = (
                     onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
                     className='font-bold text-[12.5px] hover:bg-transparent'
                 >
-                    ENDEREÇO
+                    MARCA
                     <ArrowUpDown className='ml-2 h-4 w-4' />
                 </Button>
             )
         },
-        cell: ({ row }) => {
-            const address = row.getValue('address') as string
-            return (
-                <div className='pl-3 text-[15px] max-w-xs truncate' title={address}>
-                    {address}
-                </div>
-            )
-        },
+        cell: ({ row }) => <div className='pl-3 text-[15px]'>{row.getValue('brand')}</div>,
     },
+
     {
-        accessorKey: 'role',
+        accessorKey: 'type',
         header: ({ column }) => {
             return (
                 <Button
@@ -193,18 +177,14 @@ export const columns = (
             )
         },
         cell: ({ row }) => {
-            const role = row.getValue('role') as number
-            const roleConfig = {
-                1: { label: 'Cliente' },
-                2: { label: 'VIP' },
-                3: { label: 'Premium' }
-            }
-            const config = roleConfig[role as keyof typeof roleConfig] || { label: 'Cliente' }
-            
+            const type = row.getValue('type') as string
             return (
                 <div className='pl-3 text-[15px]'>
                     <span className="text-black">
-                        {config.label}
+                        {type === 'car' ? 'Carro' : 
+                         type === 'motorcycle' ? 'Moto' : 
+                         type === 'truck' ? 'Caminhão' : 
+                         type}
                     </span>
                 </div>
             )
@@ -214,26 +194,26 @@ export const columns = (
         id: 'actions',
         enableHiding: false,
         cell: ({ row }) => {
-            const client = row.original
+            const vehicle = row.original
             return (
                 <div className='flex justify-end items-center gap-2 mr-3'>
                     <Sheet>
                         <SheetTrigger asChild>
                             <div 
                                 className='h-10 w-10 flex items-center justify-center rounded hover:bg-muted cursor-pointer'
-                                title='Ver Veículos'
+                                title='Ver Cliente'
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <Eye className='h-5 w-5 cursor-pointer' strokeWidth={1.5} />
                             </div>
                         </SheetTrigger>
-                        <VehiclesDrawer client={client} />
+                        <ClientDrawer vehicle={vehicle} />
                     </Sheet>
                     {onEdit && (
                         <div 
                             className='h-10 w-10 flex items-center justify-center rounded hover:bg-muted cursor-pointer'
-                            title='Editar Cliente'
-                            onClick={() => onEdit(client.id?.toString() || '')}
+                            title='Editar Veículo'
+                            onClick={() => onEdit(vehicle.id?.toString() || '')}
                         >
                             <Pencil className='h-5 w-5' strokeWidth={1.5} />
                         </div>
