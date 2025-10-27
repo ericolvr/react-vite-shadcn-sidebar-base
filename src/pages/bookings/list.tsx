@@ -27,8 +27,9 @@ import {
     Trash2
 } from 'lucide-react'
 import { servicesService, type ServiceResponse } from '../services/service'
-import { bookingsListService } from './list-service'
+import { bookingsListService, type CreateBookingRequest } from './list-service'
 import CustomerSelector from './components/customer_selector'
+import { type Vehicle } from './components/vehicle-service'
 
 type BookingStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
 
@@ -55,6 +56,7 @@ export function BookingsList() {
     const [loadingSlots, setLoadingSlots] = useState(false)
     const [isScheduleOpen, setIsScheduleOpen] = useState(true)
     const [modalSelectedDate, setModalSelectedDate] = useState<Date>(new Date())
+    const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 20,
@@ -331,6 +333,10 @@ export function BookingsList() {
 
     // Handler para seleção de horário com fechamento do collapse
     const handleTimeSlotSelection = (slot: string) => {
+        console.log('🕐 Selecionando horário:', slot)
+        console.log('🕐 Tipo do slot:', typeof slot)
+        console.log('🕐 Slot como JSON:', JSON.stringify(slot))
+        
         if (selectedTimeSlot === slot) {
             setSelectedTimeSlot('')
             setIsScheduleOpen(true) // Reabrir quando cancelar
@@ -375,6 +381,97 @@ export function BookingsList() {
             setIsScheduleOpen(true) // Reabrir collapse
         }
     }, [modalSelectedDate, selectedService, isNewBookingModalOpen])
+
+    // Função para criar novo booking
+    const handleCreateBooking = async () => {
+        if (!selectedVehicle || !selectedService || !selectedTimeSlot || !modalSelectedDate) {
+            alert('Por favor, preencha todos os campos obrigatórios')
+            return
+        }
+
+        try {
+            console.log('🚀 Iniciando criação de booking...')
+            console.log('📅 Data selecionada:', modalSelectedDate)
+            console.log('⏰ Horário selecionado:', selectedTimeSlot)
+            console.log('⏰ Tipo do horário:', typeof selectedTimeSlot)
+            console.log('⏰ Horário como string:', JSON.stringify(selectedTimeSlot))
+            
+            // Combinar data + horário de forma mais segura
+            const scheduledDateTime = new Date(modalSelectedDate)
+            
+            // Verificar se a data é válida
+            if (isNaN(scheduledDateTime.getTime())) {
+                throw new Error('Data inválida')
+            }
+            
+            // Limpar e validar horário
+            let cleanTimeSlot = selectedTimeSlot.trim()
+            console.log('⏰ Horário limpo:', cleanTimeSlot)
+            
+            // Se o horário está no formato ISO (2025-10-27T08:00:00Z), extrair apenas a parte do horário
+            if (cleanTimeSlot.includes('T')) {
+                const isoDate = new Date(cleanTimeSlot)
+                if (!isNaN(isoDate.getTime())) {
+                    cleanTimeSlot = isoDate.toTimeString().substring(0, 5) // "HH:MM"
+                    console.log('⏰ Horário extraído do ISO:', cleanTimeSlot)
+                }
+            }
+            
+            // Parsear horário
+            const timeParts = cleanTimeSlot.split(':')
+            console.log('⏰ Partes do horário:', timeParts)
+            
+            if (timeParts.length !== 2) {
+                throw new Error(`Formato de horário inválido: esperado HH:MM, recebido: "${cleanTimeSlot}"`)
+            }
+            
+            const hours = parseInt(timeParts[0], 10)
+            const minutes = parseInt(timeParts[1], 10)
+            
+            if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+                throw new Error('Horário inválido')
+            }
+            
+            scheduledDateTime.setHours(hours, minutes, 0, 0)
+            
+            console.log('📅 Data/hora combinada:', scheduledDateTime)
+            
+            // Formato RFC3339 que Go espera (sem milissegundos)
+            const scheduledAtISO = scheduledDateTime.toISOString().replace(/\.\d{3}Z$/, 'Z')
+            console.log('📅 ISO String (Go format):', scheduledAtISO)
+
+            const bookingData: CreateBookingRequest = {
+                company_id: selectedVehicle.company_id,
+                client_id: selectedVehicle.client_id,
+                vehicle_id: selectedVehicle.id,
+                service_ids: [parseInt(selectedService)],
+                scheduled_at: scheduledAtISO,
+                notes: ""
+            }
+
+            console.log('📋 Dados do booking:', bookingData)
+
+            const newBooking = await bookingsListService.createBooking(bookingData)
+            
+            console.log('✅ Booking criado:', newBooking)
+            
+            // Fechar modal e limpar estados
+            setIsNewBookingModalOpen(false)
+            setSelectedService('')
+            setSelectedTimeSlot('')
+            setSelectedVehicle(null)
+            setAvailableSlots([])
+            
+            // Recarregar lista de bookings
+            loadData()
+            
+            alert('Agendamento criado com sucesso!')
+            
+        } catch (error: any) {
+            console.error('💥 Erro ao criar booking:', error)
+            alert(`Erro ao criar agendamento: ${error.message}`)
+        }
+    }
 
     const getStatusColor = (status: BookingStatus): string => {
         switch (status) {
@@ -568,21 +665,9 @@ export function BookingsList() {
                                             {/* Serviços */}
                                             <td className='px-6 py-3'>
                                                 {slot.booking ? (
-                                                    <div className='space-y-1'>
-                                                        {slot.isStart ? (
-                                                            // Mostrar detalhes completos apenas no início
-                                                            slot.booking.services.map((service) => (
-                                                                <div key={service.id} className='text-gray-900 font-medium text-sm'>
-                                                                    {service.name} ({service.duration}min)
-                                                                </div>
-                                                            ))
-                                                        ) : (
-                                                            // Mostrar indicação de continuação
-                                                            <div className='text-gray-600 text-sm italic'>
-                                                                ↳ Em andamento...
-                                                            </div>
-                                                        )}
-                                                    </div>
+                                                    <span className='text-sm'>
+                                                        {slot.booking.service_name || 'Serviço'}
+                                                    </span>
                                                 ) : (
                                                     <span className='text-gray-400'>Disponível</span>
                                                 )}
@@ -809,7 +894,10 @@ export function BookingsList() {
 
                         {/* Seletor de Cliente - aparece apenas quando horário for selecionado */}
                         {selectedTimeSlot && (
-                            <CustomerSelector />
+                            <CustomerSelector 
+                                onVehicleSelect={setSelectedVehicle}
+                                selectedVehicle={selectedVehicle || undefined}
+                            />
                         )}
                         
                         <div className="flex gap-2 justify-end">
@@ -819,7 +907,11 @@ export function BookingsList() {
                             >
                                 Cancelar
                             </Button>
-                            <Button className="bg-[#317CE5] hover:bg-[#2563eb]">
+                            <Button 
+                                className="bg-[#317CE5] hover:bg-[#2563eb]"
+                                onClick={handleCreateBooking}
+                                disabled={!selectedVehicle || !selectedService || !selectedTimeSlot}
+                            >
                                 Salvar
                             </Button>
                         </div>

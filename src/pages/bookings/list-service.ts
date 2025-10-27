@@ -49,6 +49,16 @@ export type BookingsListResponse = {
     limit: number
 }
 
+export type CreateBookingRequest = {
+    company_id: number
+    client_id: number
+    vehicle_id: number
+    service_ids: number[]
+    package_id?: number
+    scheduled_at: string // ISO string format
+    notes?: string
+}
+
 // Tipo de erro customizado da API
 export type ApiError = {
     message: string
@@ -189,6 +199,29 @@ class BookingsListService {
         } catch (error: any) {
             const apiError: ApiError = {
                 message: error.response?.data?.message || 'Erro ao deletar agendamento',
+                status: error.response?.status || 500,
+                details: error.response?.data
+            }
+            throw apiError
+        }
+    }
+
+    // Criar novo agendamento
+    async createBooking(bookingData: CreateBookingRequest): Promise<Booking> {
+        try {
+            console.log('📝 Criando booking com dados:', bookingData)
+            
+            const response: AxiosResponse<Booking> = await axios.post(
+                `${BASE_URL}/bookings`,
+                bookingData
+            )
+            
+            console.log('✅ Booking criado com sucesso:', response.data)
+            return response.data
+        } catch (error: any) {
+            console.error('💥 Erro ao criar booking:', error)
+            const apiError: ApiError = {
+                message: error.response?.data?.message || 'Erro ao criar agendamento',
                 status: error.response?.status || 500,
                 details: error.response?.data
             }

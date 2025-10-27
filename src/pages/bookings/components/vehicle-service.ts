@@ -1,17 +1,12 @@
 const API_BASE_URL = 'http://localhost:8080/api/v1'
 
 export interface Vehicle {
-    id: number
-    plate: string
-    model: string
-    brand: string
-    color: string
-    year: number
-    owner_name?: string
-    owner_phone?: string
-    client_name?: string
-    phone?: string
-    client_phone?: string
+    id: number              // vehicle_id para o booking
+    company_id: number      // company_id para o booking
+    client_id: number       // client_id para o booking ✅
+    client_name: string     // nome do cliente
+    client_phone: string    // telefone do cliente
+    plate: string           // placa do veículo
 }
 
 export interface VehicleSearchResponse {
@@ -43,17 +38,12 @@ class VehicleService {
             // Log detalhado de cada veículo para verificar campos disponíveis
             data.vehicles?.forEach((vehicle, index) => {
                 console.log(`🚗 Veículo ${index + 1}:`, {
-                    id: vehicle.id,
-                    plate: vehicle.plate,
-                    model: vehicle.model,
-                    brand: vehicle.brand,
-                    color: vehicle.color,
-                    year: vehicle.year,
-                    owner_name: vehicle.owner_name,
-                    owner_phone: vehicle.owner_phone,
-                    client_name: vehicle.client_name,
-                    phone: vehicle.phone,
-                    client_phone: vehicle.client_phone,
+                    id: vehicle.id,                    // vehicle_id ✅
+                    company_id: vehicle.company_id,    // company_id ✅
+                    client_id: vehicle.client_id,      // client_id ✅
+                    client_name: vehicle.client_name,  // nome do cliente ✅
+                    client_phone: vehicle.client_phone, // telefone ✅
+                    plate: vehicle.plate,              // placa ✅
                     // Mostrar todos os campos para debug
                     all_fields: vehicle
                 })

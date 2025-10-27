@@ -67,7 +67,7 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                     onClick={() => setIsOpen(true)}
                 >
                     <div className="font-medium">
-                        {selectedVehicle.plate} - {selectedVehicle.client_name || selectedVehicle.owner_name} - {selectedVehicle.client_phone || selectedVehicle.phone || selectedVehicle.owner_phone}
+                        {selectedVehicle.plate} - {selectedVehicle.client_name} - {selectedVehicle.client_phone}
                     </div>
                 </div>
             ) : (
@@ -103,7 +103,7 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                                         className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
                                     >
                                         <div className="font-medium text-sm">
-                                            {vehicle.plate} - {vehicle.client_name || vehicle.owner_name} - {vehicle.client_phone || vehicle.phone || vehicle.owner_phone}
+                                            {vehicle.plate} - {vehicle.client_name} - {vehicle.client_phone}
                                         </div>
                                     </div>
                                 ))
