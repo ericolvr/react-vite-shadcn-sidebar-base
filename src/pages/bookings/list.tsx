@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { 
     Calendar, 
     Clock, 
@@ -52,6 +53,7 @@ export function BookingsList() {
     const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('')
     const [availableSlots, setAvailableSlots] = useState<string[]>([])
     const [loadingSlots, setLoadingSlots] = useState(false)
+    const [isScheduleOpen, setIsScheduleOpen] = useState(true)
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 20,
@@ -315,6 +317,27 @@ export function BookingsList() {
         
         const occupiedSlots = getOccupiedSlots(cleanSelectedTime, selectedServiceData.duration)
         return occupiedSlots.includes(cleanSlot)
+    }
+
+    // Calcular horário de término do serviço
+    const getEndTime = (startTime: string, duration: number): string => {
+        const cleanStartTime = startTime.includes('T') ? startTime.split('T')[1].substring(0, 5) : startTime
+        const [hours, minutes] = cleanStartTime.split(':').map(Number)
+        const totalMinutes = hours * 60 + minutes + duration
+        const endHours = Math.floor(totalMinutes / 60)
+        const endMinutes = totalMinutes % 60
+        return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`
+    }
+
+    // Handler para seleção de horário com fechamento do collapse
+    const handleTimeSlotSelection = (slot: string) => {
+        if (selectedTimeSlot === slot) {
+            setSelectedTimeSlot('')
+            setIsScheduleOpen(true) // Reabrir quando cancelar
+        } else {
+            setSelectedTimeSlot(slot)
+            setIsScheduleOpen(false) // Fechar quando selecionar
+        }
     }
 
     // Organizar horários por período para facilitar visualização
@@ -664,59 +687,81 @@ export function BookingsList() {
                             </Select>
                         </div>
 
-                        {/* Tabela de Horários Disponíveis */}
+                        {/* Collapsible de Horários */}
                         {selectedService && (
-                            <div className="space-y-2">
-                                <label className="text-sm font-medium">
-                                    Horários Disponíveis Hoje
-                                    {loadingSlots && <span className="text-xs text-gray-500 ml-2">(carregando...)</span>}
-                                </label>
-                                
-                                {loadingSlots ? (
-                                    <div className="flex items-center justify-center p-8 text-gray-500">
-                                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                                        Carregando horários...
-                                    </div>
-                                ) : availableSlots.length > 0 ? (
-                                    <div className="border rounded-lg overflow-hidden max-h-[32rem] overflow-y-auto">
-                                        {availableSlots.map((slot) => (
-                                            <div
-                                                key={slot}
-                                                onClick={() => {
-                                                    // Se clicar no mesmo horário, cancela a seleção
-                                                    if (selectedTimeSlot === slot) {
-                                                        setSelectedTimeSlot('')
-                                                    } else {
-                                                        setSelectedTimeSlot(slot)
-                                                    }
-                                                }}
-                                                className={`
-                                                    flex items-center justify-between p-4 border-b last:border-b-0 cursor-pointer transition-colors
-                                                    ${selectedTimeSlot === slot 
-                                                        ? 'bg-[#317CE5] text-white' 
-                                                        : isSlotOccupied(slot)
-                                                            ? 'bg-blue-100 text-blue-800 border-blue-200'
-                                                            : 'bg-white hover:bg-gray-50'
-                                                    }
-                                                `}
-                                            >
-                                                <span className="font-medium text-sm">
-                                                    {slot.includes('T') ? slot.split('T')[1].substring(0, 5) : slot}
-                                                </span>
-                                                <span className="text-sm opacity-75">
-                                                    Disponível
-                                                </span>
+                            <Collapsible open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
+                                <div className="space-y-2">
+                                    <CollapsibleTrigger asChild>
+                                        <div className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
+                                            selectedTimeSlot 
+                                                ? 'bg-[#317CE5] text-white border-[#317CE5] hover:bg-[#2563eb]' 
+                                                : 'hover:bg-gray-50'
+                                        }`}>
+                                            {selectedTimeSlot ? (
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="h-4 w-4 text-white" />
+                                                    <span className="font-medium">
+                                                        {services.find(s => s.id.toString() === selectedService)?.name} • {' '}
+                                                        {selectedTimeSlot.includes('T') ? selectedTimeSlot.split('T')[1].substring(0, 5) : selectedTimeSlot} às {' '}
+                                                        {getEndTime(selectedTimeSlot, services.find(s => s.id.toString() === selectedService)?.duration || 0)}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="h-4 w-4" />
+                                                    <span className="text-sm font-medium">
+                                                        Horários Disponíveis Hoje
+                                                        {loadingSlots && <span className="text-xs text-gray-500 ml-2">(carregando...)</span>}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <span className="text-xs text-gray-500">
+                                                {isScheduleOpen ? '▲' : '▼'}
+                                            </span>
+                                        </div>
+                                    </CollapsibleTrigger>
+                                    
+                                    <CollapsibleContent>
+                                        {loadingSlots ? (
+                                            <div className="flex items-center justify-center p-8 text-gray-500">
+                                                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                                Carregando horários...
                                             </div>
-                                        ))}
-                                    </div>
-                                ) : (
-                                    <div className="text-center p-8 text-gray-500 border rounded-lg bg-gray-50">
-                                        <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                                        <p>Nenhum horário disponível para este serviço</p>
-                                        <p className="text-xs mt-1">Tente selecionar outro dia</p>
-                                    </div>
-                                )}
-                            </div>
+                                        ) : availableSlots.length > 0 ? (
+                                            <div className="border rounded-lg overflow-hidden max-h-[32rem] overflow-y-auto">
+                                                {availableSlots.map((slot) => (
+                                                    <div
+                                                        key={slot}
+                                                        onClick={() => handleTimeSlotSelection(slot)}
+                                                        className={`
+                                                            flex items-center justify-between p-4 border-b last:border-b-0 cursor-pointer transition-colors
+                                                            ${selectedTimeSlot === slot 
+                                                                ? 'bg-[#317CE5] text-white' 
+                                                                : isSlotOccupied(slot)
+                                                                    ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                                                    : 'bg-white hover:bg-gray-50'
+                                                            }
+                                                        `}
+                                                    >
+                                                        <span className="font-medium text-sm">
+                                                            {slot.includes('T') ? slot.split('T')[1].substring(0, 5) : slot}
+                                                        </span>
+                                                        <span className="text-sm opacity-75">
+                                                            Disponível
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center p-8 text-gray-500 border rounded-lg bg-gray-50">
+                                                <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                                                <p>Nenhum horário disponível para este serviço</p>
+                                                <p className="text-xs mt-1">Tente selecionar outro dia</p>
+                                            </div>
+                                        )}
+                                    </CollapsibleContent>
+                                </div>
+                            </Collapsible>
                         )}
                         
                         <div className="flex gap-2 justify-end">
