@@ -65,18 +65,14 @@ export function BookingsList() {
     }
 
     // Gerar slots de tempo baseado nas configurações da empresa e data selecionada
-    const generateTimeSlots = (settings: CompanySettingsResponse, date: Date): string[] => {
+    const generateTimeSlots = (settings: CompanySettingsResponse | null, date: Date): string[] => {
         const slots: string[] = []
         const isWeekend = date.getDay() === 0 || date.getDay() === 6 // 0 = Domingo, 6 = Sábado
         
-        console.log(`📅 Data selecionada: ${date.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })} (${isWeekend ? 'FIM DE SEMANA' : 'DIA ÚTIL'})`)
-        
-        // Usar os campos corretos do service de settings
-        const startTime = isWeekend ? settings.startWorkWeekend : settings.startWorkWeekday
-        const endTime = isWeekend ? settings.endWorkWeekend : settings.endWorkWeekday
-        const slotDuration = 15 // Fixo por enquanto, pode ser configurável depois
-        
-        console.log(`⏰ Horário de funcionamento: ${startTime} às ${endTime}`)
+        // Usar horários padrão se não tiver configurações
+        const startTime = isWeekend ? '09:00' : '08:00'
+        const endTime = isWeekend ? '17:00' : '18:00'
+        const slotDuration = 15 // 15 minutos por slot
         
         const [startHour, startMinute] = startTime.split(':').map(Number)
         const [endHour, endMinute] = endTime.split(':').map(Number)
@@ -90,8 +86,6 @@ export function BookingsList() {
             const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
             slots.push(timeString)
         }
-        
-        console.log(`🕐 Gerados ${slots.length} slots de ${slotDuration} minutos`)
         
         return slots
     }
@@ -122,7 +116,7 @@ export function BookingsList() {
                     ? bookingDateTime.split('T')[1].substring(0, 5) // "12:00" de "2025-10-28T12:00:00Z"
                     : bookingDateTime.substring(11, 16) // "12:00" de "2025-10-28 12:00:00"
                 
-                console.log(`📅 Booking ${b.id}: Data original: ${bookingDateTime}, Horário extraído: ${bookingTime}`)
+                console.log(`🕐 Booking ${b.id}: ${bookingDateTime} → ${bookingTime} (SEM timezone)`)
 
                 // Calcular duração total dos serviços
                 const totalDuration = b.services.reduce((total: number, service: any) => total + service.duration, 0)
@@ -171,26 +165,11 @@ export function BookingsList() {
             setLoading(true)
             setError(null)
             
-            // Debug: mostrar data atual
-            const now = new Date()
-            console.log(`🕐 Data/hora atual: ${now.toLocaleString('pt-BR')}`)
-            console.log(`📅 Hoje é: ${now.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}`)
+            // Gerar slots de tempo para a data selecionada (sem depender de configurações)
+            const slots = generateTimeSlots(null, selectedDate)
             
-            // Carregar configurações da empresa primeiro
-            const settings = await companySettingsService.getSettings('1')
-            setCompanySettings(settings)
-            
-            // Gerar slots de tempo para a data selecionada
-            const slots = generateTimeSlots(settings, selectedDate)
-            
-            // Formatar data selecionada para API (YYYY-MM-DD) - usar data local
-            const year = selectedDate.getFullYear()
-            const month = String(selectedDate.getMonth() + 1).padStart(2, '0')
-            const day = String(selectedDate.getDate()).padStart(2, '0')
-            const dateString = `${year}-${month}-${day}`
-            
-            console.log(`📅 Data selecionada: ${selectedDate.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit', year: 'numeric' })}`)
-            console.log(`📅 Buscando agendamentos para: ${dateString}`)
+            // Formatar data selecionada para API (YYYY-MM-DD)
+            const dateString = selectedDate.toISOString().split('T')[0]
             
             // Carregar bookings filtrados por data
             const response = await bookingsListService.getBookings(
@@ -201,36 +180,37 @@ export function BookingsList() {
                 dateString // date
             )
             
-            console.log(`📊 API retornou ${response.bookings.length} agendamentos:`)
-            response.bookings.forEach((booking: any) => {
-                console.log(`  - ID ${booking.id}: ${booking.vehicle_plate} | Status: ${booking.status} | Data: ${booking.scheduled_at || booking.started_at}`)
-            })
+            console.log(`📊 API retornou ${response.bookings.length} agendamentos para ${dateString}`)
             
-            // WORKAROUND: Filtrar por data no frontend já que o backend não está filtrando
-            const filteredBookings = response.bookings.filter((booking: any) => {
+            // FILTRO: Manter apenas agendamentos da data selecionada
+            const bookingsForSelectedDate = response.bookings.filter((booking: any) => {
                 const bookingDateTime = booking.scheduled_at || booking.started_at
                 if (!bookingDateTime) return false
                 
-                // Extrair apenas a data (YYYY-MM-DD) ignorando timezone
-                const bookingDateOnly = bookingDateTime.split('T')[0]
-                const isMatchingDate = bookingDateOnly === dateString
+                // Extrair apenas a data (YYYY-MM-DD)
+                const bookingDate = bookingDateTime.split('T')[0]
+                const matches = bookingDate === dateString
                 
-                console.log(`🔍 Booking ${booking.id}: ${bookingDateOnly} === ${dateString} ? ${isMatchingDate}`)
+                if (matches) {
+                    console.log(`✅ Booking ${booking.id} pertence ao dia ${dateString}`)
+                } else {
+                    console.log(`❌ Booking ${booking.id} é do dia ${bookingDate}, não ${dateString}`)
+                }
                 
-                return isMatchingDate
+                return matches
             })
             
-            console.log(`✅ Após filtro: ${filteredBookings.length} agendamentos para ${dateString}`)
+            console.log(`🎯 Após filtro: ${bookingsForSelectedDate.length} agendamentos para ${dateString}`)
             
-            setBookings(filteredBookings)
+            setBookings(bookingsForSelectedDate)
             setPagination(prev => ({
                 ...prev,
-                total: response.total,
-                totalPages: Math.ceil(response.total / response.limit)
+                total: bookingsForSelectedDate.length,
+                totalPages: Math.ceil(bookingsForSelectedDate.length / response.limit)
             }))
             
             // Mapear bookings filtrados para slots de tempo
-            const timeSlotsWithBookings = mapBookingsToTimeSlots(filteredBookings, slots)
+            const timeSlotsWithBookings = mapBookingsToTimeSlots(bookingsForSelectedDate, slots)
             setTimeSlots(timeSlotsWithBookings)
             
         } catch (err: any) {
