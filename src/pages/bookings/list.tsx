@@ -475,6 +475,7 @@ export function BookingsList() {
                 vehicle_id: selectedVehicle.id,
                 service_ids: [parseInt(selectedService)],
                 scheduled_at: scheduledAtISO,
+                status: 'created',
                 notes: ""
             }
 

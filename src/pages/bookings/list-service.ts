@@ -56,6 +56,7 @@ export type CreateBookingRequest = {
     service_ids: number[]
     package_id?: number
     scheduled_at: string // ISO string format
+    status: string // Status do booking (ex: 'created')
     notes?: string
 }
 
