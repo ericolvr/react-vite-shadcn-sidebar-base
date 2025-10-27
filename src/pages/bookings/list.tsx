@@ -274,6 +274,49 @@ export function BookingsList() {
         loadAvailableSlots(serviceId) // Buscar slots disponíveis
     }
 
+    // Calcular quais slots serão ocupados pelo serviço
+    const getOccupiedSlots = (startTime: string, serviceDuration: number): string[] => {
+        if (!startTime) return []
+        
+        const occupiedSlots: string[] = []
+        
+        // Extrair horário limpo (08:00)
+        const cleanStartTime = startTime.includes('T') ? startTime.split('T')[1].substring(0, 5) : startTime
+        const [hours, minutes] = cleanStartTime.split(':').map(Number)
+        let totalMinutes = hours * 60 + minutes
+        
+        // Calcular quantos slots de 30min são necessários
+        // Para 90min: de 08:00 até 09:30 = 4 slots (08:00, 08:30, 09:00, 09:30)
+        // Sempre incluir o slot onde o serviço termina
+        const slotsNeeded = Math.floor(serviceDuration / 30) + 1
+        
+        // Gerar slots ocupados de 30 em 30 minutos
+        for (let i = 0; i < slotsNeeded; i++) {
+            const slotHours = Math.floor(totalMinutes / 60)
+            const slotMinutes = totalMinutes % 60
+            const slotTime = `${slotHours.toString().padStart(2, '0')}:${slotMinutes.toString().padStart(2, '0')}`
+            occupiedSlots.push(slotTime)
+            totalMinutes += 30 // Incrementar de 30 em 30 minutos
+        }
+        
+        console.log(`🎯 Serviço ${serviceDuration}min iniciando em ${cleanStartTime} ocupará slots:`, occupiedSlots)
+        return occupiedSlots
+    }
+
+    // Verificar se um slot será ocupado pelo serviço selecionado
+    const isSlotOccupied = (slot: string): boolean => {
+        if (!selectedTimeSlot || !selectedService) return false
+        
+        const selectedServiceData = services.find(s => s.id.toString() === selectedService)
+        if (!selectedServiceData) return false
+        
+        const cleanSlot = slot.includes('T') ? slot.split('T')[1].substring(0, 5) : slot
+        const cleanSelectedTime = selectedTimeSlot.includes('T') ? selectedTimeSlot.split('T')[1].substring(0, 5) : selectedTimeSlot
+        
+        const occupiedSlots = getOccupiedSlots(cleanSelectedTime, selectedServiceData.duration)
+        return occupiedSlots.includes(cleanSlot)
+    }
+
     // Organizar horários por período para facilitar visualização
     const organizeSlotsByPeriod = (slots: string[]) => {
         const periods = {
@@ -635,20 +678,29 @@ export function BookingsList() {
                                         Carregando horários...
                                     </div>
                                 ) : availableSlots.length > 0 ? (
-                                    <div className="border rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                                    <div className="border rounded-lg overflow-hidden max-h-[32rem] overflow-y-auto">
                                         {availableSlots.map((slot) => (
                                             <div
                                                 key={slot}
-                                                onClick={() => setSelectedTimeSlot(slot)}
+                                                onClick={() => {
+                                                    // Se clicar no mesmo horário, cancela a seleção
+                                                    if (selectedTimeSlot === slot) {
+                                                        setSelectedTimeSlot('')
+                                                    } else {
+                                                        setSelectedTimeSlot(slot)
+                                                    }
+                                                }}
                                                 className={`
                                                     flex items-center justify-between p-4 border-b last:border-b-0 cursor-pointer transition-colors
                                                     ${selectedTimeSlot === slot 
                                                         ? 'bg-[#317CE5] text-white' 
-                                                        : 'bg-white hover:bg-gray-50'
+                                                        : isSlotOccupied(slot)
+                                                            ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                                            : 'bg-white hover:bg-gray-50'
                                                     }
                                                 `}
                                             >
-                                                <span className="font-medium text-lg">
+                                                <span className="font-medium text-sm">
                                                     {slot.includes('T') ? slot.split('T')[1].substring(0, 5) : slot}
                                                 </span>
                                                 <span className="text-sm opacity-75">
