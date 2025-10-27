@@ -12,6 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { 
     Calendar, 
+    CalendarClock,
+    ChevronDown,
+    ChevronUp,
     Clock, 
     User, 
     Car, 
@@ -20,7 +23,6 @@ import {
     Search,
     Filter,
     Plus,
-    RefreshCw,
     Loader2,
     Eye,
     Edit,
@@ -55,7 +57,12 @@ export function BookingsList() {
     const [availableSlots, setAvailableSlots] = useState<string[]>([])
     const [loadingSlots, setLoadingSlots] = useState(false)
     const [isScheduleOpen, setIsScheduleOpen] = useState(true)
-    const [modalSelectedDate, setModalSelectedDate] = useState<Date>(new Date())
+    const [modalSelectedDate, setModalSelectedDate] = useState<Date>(() => {
+        // Garantir que a data inicial seja sempre hoje ou futura
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        return today
+    })
     const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
     const [pagination, setPagination] = useState({
         page: 1,
@@ -382,6 +389,20 @@ export function BookingsList() {
         }
     }, [modalSelectedDate, selectedService, isNewBookingModalOpen])
 
+    // Auto-refresh a cada 30 segundos
+    useEffect(() => {
+        const interval = setInterval(() => {
+            console.log('🔄 Auto-refresh executando...')
+            loadData()
+        }, 30000) // 30 segundos
+
+        // Cleanup do interval quando o componente for desmontado
+        return () => {
+            console.log('🛑 Limpando auto-refresh interval')
+            clearInterval(interval)
+        }
+    }, []) // Dependência vazia para executar apenas uma vez
+
     // Função para criar novo booking
     const handleCreateBooking = async () => {
         if (!selectedVehicle || !selectedService || !selectedTimeSlot || !modalSelectedDate) {
@@ -395,6 +416,8 @@ export function BookingsList() {
             console.log('⏰ Horário selecionado:', selectedTimeSlot)
             console.log('⏰ Tipo do horário:', typeof selectedTimeSlot)
             console.log('⏰ Horário como string:', JSON.stringify(selectedTimeSlot))
+            
+            console.log('🚨 VOCÊ CLICOU EM QUE HORÁRIO? Verifique se selectedTimeSlot está correto!')
             
             // Combinar data + horário de forma mais segura
             const scheduledDateTime = new Date(modalSelectedDate)
@@ -410,11 +433,10 @@ export function BookingsList() {
             
             // Se o horário está no formato ISO (2025-10-27T08:00:00Z), extrair apenas a parte do horário
             if (cleanTimeSlot.includes('T')) {
-                const isoDate = new Date(cleanTimeSlot)
-                if (!isNaN(isoDate.getTime())) {
-                    cleanTimeSlot = isoDate.toTimeString().substring(0, 5) // "HH:MM"
-                    console.log('⏰ Horário extraído do ISO:', cleanTimeSlot)
-                }
+                // CORREÇÃO: Extrair horário diretamente da string ISO sem conversão de timezone
+                const timePart = cleanTimeSlot.split('T')[1].split('Z')[0] // "16:00:00"
+                cleanTimeSlot = timePart.substring(0, 5) // "16:00"
+                console.log('⏰ Horário extraído do ISO (SEM conversão timezone):', cleanTimeSlot)
             }
             
             // Parsear horário
@@ -435,10 +457,63 @@ export function BookingsList() {
             scheduledDateTime.setHours(hours, minutes, 0, 0)
             
             console.log('📅 Data/hora combinada:', scheduledDateTime)
+            console.log('📅 Timezone offset:', scheduledDateTime.getTimezoneOffset())
             
-            // Formato RFC3339 que Go espera (sem milissegundos)
-            const scheduledAtISO = scheduledDateTime.toISOString().replace(/\.\d{3}Z$/, 'Z')
-            console.log('📅 ISO String (Go format):', scheduledAtISO)
+            // NOVA ABORDAGEM: Enviar horário local com timezone em vez de UTC
+            // Isso evita problemas de sincronização entre frontend e backend
+            
+            // Detectar timezone automaticamente
+            const offset = scheduledDateTime.getTimezoneOffset()
+            const offsetHours = Math.floor(Math.abs(offset) / 60)
+            const offsetMinutes = Math.abs(offset) % 60
+            const offsetSign = offset > 0 ? '-' : '+'
+            const timezoneString = `${offsetSign}${offsetHours.toString().padStart(2, '0')}:${offsetMinutes.toString().padStart(2, '0')}`
+            
+            // Construir timestamp com timezone local usando os valores corretos do scheduledDateTime
+            const year = scheduledDateTime.getFullYear()
+            const month = String(scheduledDateTime.getMonth() + 1).padStart(2, '0')
+            const day = String(scheduledDateTime.getDate()).padStart(2, '0')
+            const hourStr = String(scheduledDateTime.getHours()).padStart(2, '0')
+            const minuteStr = String(scheduledDateTime.getMinutes()).padStart(2, '0')
+            
+            console.log('🔍 DEBUG HORÁRIO - VERSÃO ATUALIZADA:', {
+                horasParsedas: hours,
+                minutosParsedos: minutes,
+                horasScheduledDateTime: scheduledDateTime.getHours(),
+                minutosScheduledDateTime: scheduledDateTime.getMinutes(),
+                scheduledDateTimeCompleto: scheduledDateTime.toString()
+            })
+            
+            // Formato: YYYY-MM-DDTHH:MM:SS-03:00 (com timezone local)
+            const scheduledAtISO = `${year}-${month}-${day}T${hourStr}:${minuteStr}:00${timezoneString}`
+            
+            console.log('📅 ISO String (com timezone local):', scheduledAtISO)
+            
+            // Verificar detalhes do timezone
+            console.log('🌍 DETALHES DO TIMEZONE:')
+            console.log('├─ Offset em minutos:', offset)
+            console.log('├─ Offset em horas:', offsetHours)
+            console.log('├─ Sinal do offset:', offsetSign)
+            console.log('├─ String do timezone:', timezoneString)
+            console.log('└─ Timezone detectado:', offset === 180 ? 'UTC-3 (Brasil)' : `UTC${offsetSign}${offsetHours}`)
+            
+            // Comparação com horário local (não mais UTC)
+            const agora = new Date()
+            console.log('📅 Comparação com timezone local:', {
+                agoraLocal: agora.toLocaleString('pt-BR'),
+                scheduledLocal: scheduledDateTime.toLocaleString('pt-BR'),
+                agoraISO: agora.toISOString(),
+                scheduledISO: scheduledAtISO,
+                isFuture: scheduledDateTime > agora,
+                diferençaMinutos: (scheduledDateTime.getTime() - agora.getTime()) / (1000 * 60)
+            })
+            
+            // Como o backend Go vai interpretar
+            console.log('🔍 COMO BACKEND VAI INTERPRETAR:')
+            console.log('├─ Recebe:', scheduledAtISO)
+            console.log('├─ Parseia como:', new Date(scheduledAtISO).toString())
+            console.log('├─ Converte para UTC:', new Date(scheduledAtISO).toISOString())
+            console.log('└─ Compara com now.UTC():', 'Agora ambos consideram timezone!')
 
             const bookingData: CreateBookingRequest = {
                 company_id: selectedVehicle.company_id,
@@ -450,6 +525,17 @@ export function BookingsList() {
             }
 
             console.log('📋 Dados do booking:', bookingData)
+            
+            // 🔍 MOSTRAR VALOR E FORMATO DETALHADO DO AGENDAMENTO
+            console.log('🕐 DETALHES DO AGENDAMENTO:')
+            console.log('├─ Valor enviado:', bookingData.scheduled_at)
+            console.log('├─ Tipo:', typeof bookingData.scheduled_at)
+            console.log('├─ Comprimento:', bookingData.scheduled_at.length)
+            console.log('├─ Formato esperado:', 'YYYY-MM-DDTHH:MM:SSZ')
+            console.log('├─ Tem "T"?', bookingData.scheduled_at.includes('T'))
+            console.log('├─ Tem "Z"?', bookingData.scheduled_at.endsWith('Z'))
+            console.log('├─ Caracteres:', bookingData.scheduled_at.split('').map((c: string, i: number) => `${i}:${c}`))
+            console.log('└─ Parseado como Date:', new Date(bookingData.scheduled_at).toString())
 
             const newBooking = await bookingsListService.createBooking(bookingData)
             
@@ -537,7 +623,6 @@ export function BookingsList() {
                     <div className='flex flex-col items-center justify-center h-64'>
                         <p className='text-red-500 text-lg mb-4'>{error}</p>
                         <Button onClick={handleRefresh} className='bg-[#317CE5] hover:bg-[#2563eb]'>
-                            <RefreshCw className='h-4 w-4 mr-2' />
                             Tentar Novamente
                         </Button>
                     </div>
@@ -558,28 +643,10 @@ export function BookingsList() {
                 />
                 <div className='flex flex-1 flex-col gap-6 mx-8 pt-0 mt-10 mb-8'>
                     
-                    {/* Header com título e ações */}
-                    <div className='flex justify-between items-center'>
-                        <div className='flex gap-2'>
-                            <Button 
-                                onClick={() => setIsNewBookingModalOpen(true)} 
-                                className='bg-[#317CE5] hover:bg-[#2563eb]'
-                                size="sm"
-                            >
-                                <Plus className='h-4 w-4 mr-2' />
-                                Novo Agendamento
-                            </Button>
-                            <Button onClick={handleRefresh} variant="outline" size="sm">
-                                <RefreshCw className='h-4 w-4 mr-2' />
-                                Atualizar
-                            </Button>
-                        </div>
-                    </div>
-
-                    {/* Seletor de Dias da Semana */}
-                    <div className='flex flex-col gap-4'>
-                        
-                        <div className='flex gap-2 overflow-x-auto pb-2'>
+                    {/* Seletor de Dias da Semana com Botão Novo Agendamento */}
+                    <div className='flex justify-between items-center gap-4'>
+                        {/* Dias da semana à esquerda */}
+                        <div className='flex gap-2 overflow-x-auto pb-2 flex-1'>
                             {generateWeekDays().map((date, index) => {
                                 const isSelected = selectedDate.toDateString() === date.toDateString()
                                 const isToday = new Date().toDateString() === date.toDateString()
@@ -613,6 +680,15 @@ export function BookingsList() {
                                 )
                             })}
                         </div>
+                        
+                        {/* Botão Novo Agendamento à direita */}
+                        <Button 
+                            onClick={() => setIsNewBookingModalOpen(true)} 
+                            className='bg-[#317CE5] hover:bg-[#2563eb] px-4 py-3 h-[60px]'
+                        >
+                            <CalendarClock className='h-4 w-4 mr-2' />
+                            Novo Agendamento
+                        </Button>
                     </div>
 
                     {/* Tabela de Horários */}
@@ -794,15 +870,25 @@ export function BookingsList() {
                                         const dayName = day.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
                                         const dayNumber = day.getDate()
                                         
+                                        // Verificar se é data passada (antes de hoje)
+                                        const today = new Date()
+                                        today.setHours(0, 0, 0, 0) // Zerar horas para comparar apenas a data
+                                        const dayToCompare = new Date(day)
+                                        dayToCompare.setHours(0, 0, 0, 0)
+                                        const isPastDate = dayToCompare < today
+                                        
                                         return (
                                             <button
                                                 key={index}
-                                                onClick={() => setModalSelectedDate(day)}
+                                                onClick={() => !isPastDate && setModalSelectedDate(day)}
+                                                disabled={isPastDate}
                                                 className={`
                                                     flex flex-col items-center justify-center p-2 rounded-lg border transition-colors min-w-[50px] h-[60px]
-                                                    ${isSelected 
-                                                        ? 'bg-[#317CE5] text-white border-[#317CE5]' 
-                                                        : 'bg-white hover:bg-gray-50 border-gray-200'
+                                                    ${isPastDate 
+                                                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50' 
+                                                        : isSelected 
+                                                            ? 'bg-[#317CE5] text-white border-[#317CE5]' 
+                                                            : 'bg-white hover:bg-gray-50 border-gray-200 cursor-pointer'
                                                     }
                                                 `}
                                             >
@@ -857,7 +943,33 @@ export function BookingsList() {
                                             </div>
                                         ) : availableSlots.length > 0 ? (
                                             <div className="border rounded-lg overflow-hidden max-h-[32rem] overflow-y-auto">
-                                                {availableSlots.map((slot) => (
+                                                {availableSlots.filter((slot) => {
+                                                    // Filtrar horários que já passaram se for hoje
+                                                    const today = new Date()
+                                                    const selectedDay = new Date(modalSelectedDate)
+                                                    
+                                                    // Se não for hoje, mostrar todos os horários
+                                                    if (selectedDay.toDateString() !== today.toDateString()) {
+                                                        return true
+                                                    }
+                                                    
+                                                    // Se for hoje, verificar se o horário já passou
+                                                    let slotTime: string
+                                                    if (slot.includes('T')) {
+                                                        // Formato ISO: "2025-10-27T08:00:00Z"
+                                                        slotTime = slot.split('T')[1].substring(0, 5)
+                                                    } else {
+                                                        // Formato simples: "08:00"
+                                                        slotTime = slot
+                                                    }
+                                                    
+                                                    const [hours, minutes] = slotTime.split(':').map(Number)
+                                                    const slotDateTime = new Date()
+                                                    slotDateTime.setHours(hours, minutes, 0, 0)
+                                                    
+                                                    // Retornar true se o horário ainda não passou
+                                                    return slotDateTime > today
+                                                }).map((slot) => (
                                                     <div
                                                         key={slot}
                                                         onClick={() => handleTimeSlotSelection(slot)}
@@ -883,8 +995,27 @@ export function BookingsList() {
                                         ) : (
                                             <div className="text-center p-8 text-gray-500 border rounded-lg bg-gray-50">
                                                 <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                                                <p>Nenhum horário disponível para este serviço</p>
-                                                <p className="text-xs mt-1">Tente selecionar outro dia</p>
+                                                {(() => {
+                                                    const today = new Date()
+                                                    const selectedDay = new Date(modalSelectedDate)
+                                                    const isToday = selectedDay.toDateString() === today.toDateString()
+                                                    
+                                                    if (isToday) {
+                                                        return (
+                                                            <>
+                                                                <p>Nenhum horário disponível hoje</p>
+                                                                <p className="text-xs mt-1">Os horários de hoje já passaram. Tente selecionar outro dia.</p>
+                                                            </>
+                                                        )
+                                                    } else {
+                                                        return (
+                                                            <>
+                                                                <p>Nenhum horário disponível para este serviço</p>
+                                                                <p className="text-xs mt-1">Tente selecionar outro dia</p>
+                                                            </>
+                                                        )
+                                                    }
+                                                })()}
                                             </div>
                                         )}
                                     </CollapsibleContent>
