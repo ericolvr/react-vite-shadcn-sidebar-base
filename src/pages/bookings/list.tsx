@@ -26,9 +26,9 @@ import {
     Edit,
     Trash2
 } from 'lucide-react'
-import { bookingsListService, type Booking, type BookingService } from './list-service'
-import { companySettingsService, type CompanySettingsResponse } from '../settings/service'
 import { servicesService, type ServiceResponse } from '../services/service'
+import { bookingsListService } from './list-service'
+import CustomerSelector from './components/customer_selector'
 
 type BookingStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
 
@@ -805,6 +805,11 @@ export function BookingsList() {
                                     </CollapsibleContent>
                                 </div>
                             </Collapsible>
+                        )}
+
+                        {/* Seletor de Cliente - aparece apenas quando horário for selecionado */}
+                        {selectedTimeSlot && (
+                            <CustomerSelector />
                         )}
                         
                         <div className="flex gap-2 justify-end">
