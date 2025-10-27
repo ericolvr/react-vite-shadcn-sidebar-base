@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Header } from '@/components/header'
@@ -54,6 +54,7 @@ export function BookingsList() {
     const [availableSlots, setAvailableSlots] = useState<string[]>([])
     const [loadingSlots, setLoadingSlots] = useState(false)
     const [isScheduleOpen, setIsScheduleOpen] = useState(true)
+    const [modalSelectedDate, setModalSelectedDate] = useState<Date>(new Date())
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 20,
@@ -243,17 +244,15 @@ export function BookingsList() {
     }
 
     // Buscar slots disponíveis para o serviço selecionado
-    const loadAvailableSlots = async (serviceId: string) => {
-        if (!serviceId) {
+    const loadAvailableSlots = useCallback(async (serviceId: string) => {
+        if (!serviceId || !isNewBookingModalOpen) {
             setAvailableSlots([])
             return
         }
 
         try {
-            setLoadingSlots(true)
-            // Sempre usar a data de hoje para horários disponíveis
-            const today = new Date()
-            const dateString = today.toISOString().split('T')[0]
+            // Não mostrar loading para mudanças de data para evitar piscar
+            const dateString = modalSelectedDate.toISOString().split('T')[0]
             const companyId = 1 // ID da empresa
             const serviceIds = [parseInt(serviceId)]
             
@@ -267,12 +266,13 @@ export function BookingsList() {
         } finally {
             setLoadingSlots(false)
         }
-    }
+    }, [modalSelectedDate, isNewBookingModalOpen])
 
     // Lidar com mudança de serviço
     const handleServiceChange = (serviceId: string) => {
         setSelectedService(serviceId)
         setSelectedTimeSlot('') // Limpar horário selecionado
+        setLoadingSlots(true) // Mostrar loading apenas para mudança de serviço
         loadAvailableSlots(serviceId) // Buscar slots disponíveis
     }
 
@@ -366,6 +366,15 @@ export function BookingsList() {
         loadData()
         loadServices() // Carregar serviços também
     }, [pagination.page, selectedDate])
+
+    // Recarregar slots quando a data do modal mudar
+    useEffect(() => {
+        if (selectedService && isNewBookingModalOpen) {
+            loadAvailableSlots(selectedService)
+            setSelectedTimeSlot('') // Limpar horário selecionado
+            setIsScheduleOpen(true) // Reabrir collapse
+        }
+    }, [modalSelectedDate, selectedService, isNewBookingModalOpen])
 
     const getStatusColor = (status: BookingStatus): string => {
         switch (status) {
@@ -664,27 +673,61 @@ export function BookingsList() {
                     </DialogHeader>
                     
                     <div className="space-y-4">
-                        {/* Select de Serviço */}
+                        {/* Linha com Serviço e Dias da Semana */}
                         <div className="space-y-2">
-                            <label className="text-sm font-medium">Serviço</label>
-                            <Select value={selectedService} onValueChange={handleServiceChange}>
-                                <SelectTrigger className="w-full h-[60px]">
-                                    <SelectValue placeholder="Selecione um serviço" />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    {services.map((service) => (
-                                        <SelectItem key={service.id} value={service.id.toString()}>
-                                            <div className="flex justify-between items-center w-full">
-                                                <span>{service.name}</span>
-                                                <div className="flex gap-2 text-xs text-gray-500 ml-2">
-                                                    <span>R$ {service.price.toFixed(2)}</span>
-                                                    <span>{service.duration}min</span>
-                                                </div>
-                                            </div>
-                                        </SelectItem>
-                                    ))}
-                                </SelectContent>
-                            </Select>
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium">Serviço</label>
+                                <label className="text-sm font-medium">Data</label>
+                            </div>
+                            <div className="flex gap-4 items-start">
+                                {/* Select de Serviço */}
+                                <div className="flex-1">
+                                    <Select value={selectedService} onValueChange={handleServiceChange}>
+                                        <SelectTrigger className="w-full h-[60px]">
+                                            <SelectValue placeholder="Selecione um serviço" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {services.map((service) => (
+                                                <SelectItem key={service.id} value={service.id.toString()}>
+                                                    <div className="flex justify-between items-center w-full">
+                                                        <span>{service.name}</span>
+                                                        <div className="flex gap-2 text-xs text-gray-500 ml-2">
+                                                            <span>R$ {service.price.toFixed(2)}</span>
+                                                            <span>{service.duration}min</span>
+                                                        </div>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Botões dos Dias da Semana */}
+                                <div className="flex gap-1">
+                                    {generateWeekDays().map((day, index) => {
+                                        const isSelected = day.toDateString() === modalSelectedDate.toDateString()
+                                        const dayName = day.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+                                        const dayNumber = day.getDate()
+                                        
+                                        return (
+                                            <button
+                                                key={index}
+                                                onClick={() => setModalSelectedDate(day)}
+                                                className={`
+                                                    flex flex-col items-center justify-center p-2 rounded-lg border transition-colors min-w-[50px] h-[60px]
+                                                    ${isSelected 
+                                                        ? 'bg-[#317CE5] text-white border-[#317CE5]' 
+                                                        : 'bg-white hover:bg-gray-50 border-gray-200'
+                                                    }
+                                                `}
+                                            >
+                                                <span className="text-xs font-medium">{dayName}</span>
+                                                <span className="text-sm font-bold">{dayNumber}</span>
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
                         </div>
 
                         {/* Collapsible de Horários */}
