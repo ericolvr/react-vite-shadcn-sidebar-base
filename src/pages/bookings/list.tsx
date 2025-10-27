@@ -49,6 +49,9 @@ export function BookingsList() {
     const [isNewBookingModalOpen, setIsNewBookingModalOpen] = useState(false)
     const [services, setServices] = useState<ServiceResponse[]>([])
     const [selectedService, setSelectedService] = useState<string>('')
+    const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('')
+    const [availableSlots, setAvailableSlots] = useState<string[]>([])
+    const [loadingSlots, setLoadingSlots] = useState(false)
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 20,
@@ -235,6 +238,62 @@ export function BookingsList() {
         } catch (error) {
             console.error('Erro ao carregar serviços:', error)
         }
+    }
+
+    // Buscar slots disponíveis para o serviço selecionado
+    const loadAvailableSlots = async (serviceId: string) => {
+        if (!serviceId) {
+            setAvailableSlots([])
+            return
+        }
+
+        try {
+            setLoadingSlots(true)
+            // Sempre usar a data de hoje para horários disponíveis
+            const today = new Date()
+            const dateString = today.toISOString().split('T')[0]
+            const companyId = 1 // ID da empresa
+            const serviceIds = [parseInt(serviceId)]
+            
+            const slots = await bookingsListService.getAvailableSlots(companyId, dateString, serviceIds)
+            setAvailableSlots(slots)
+            
+            console.log(`🎯 Slots disponíveis para serviço ${serviceId} em ${dateString}:`, slots)
+        } catch (error) {
+            console.error('Erro ao carregar slots disponíveis:', error)
+            setAvailableSlots([])
+        } finally {
+            setLoadingSlots(false)
+        }
+    }
+
+    // Lidar com mudança de serviço
+    const handleServiceChange = (serviceId: string) => {
+        setSelectedService(serviceId)
+        setSelectedTimeSlot('') // Limpar horário selecionado
+        loadAvailableSlots(serviceId) // Buscar slots disponíveis
+    }
+
+    // Organizar horários por período para facilitar visualização
+    const organizeSlotsByPeriod = (slots: string[]) => {
+        const periods = {
+            manha: [] as string[],
+            tarde: [] as string[],
+            noite: [] as string[]
+        }
+
+        slots.forEach(slot => {
+            const hour = parseInt(slot.split(':')[0])
+            if (hour >= 6 && hour < 12) {
+                periods.manha.push(slot)
+            } else if (hour >= 12 && hour < 18) {
+                periods.tarde.push(slot)
+            } else {
+                periods.noite.push(slot)
+            }
+        })
+
+        return periods
     }
 
     useEffect(() => {
@@ -539,8 +598,10 @@ export function BookingsList() {
                     </DialogHeader>
                     
                     <div className="space-y-4">
+                        {/* Select de Serviço */}
                         <div className="space-y-2">
-                            <Select value={selectedService} onValueChange={setSelectedService}>
+                            <label className="text-sm font-medium">Serviço</label>
+                            <Select value={selectedService} onValueChange={handleServiceChange}>
                                 <SelectTrigger className="w-full h-[60px]">
                                     <SelectValue placeholder="Selecione um serviço" />
                                 </SelectTrigger>
@@ -559,6 +620,52 @@ export function BookingsList() {
                                 </SelectContent>
                             </Select>
                         </div>
+
+                        {/* Tabela de Horários Disponíveis */}
+                        {selectedService && (
+                            <div className="space-y-2">
+                                <label className="text-sm font-medium">
+                                    Horários Disponíveis Hoje
+                                    {loadingSlots && <span className="text-xs text-gray-500 ml-2">(carregando...)</span>}
+                                </label>
+                                
+                                {loadingSlots ? (
+                                    <div className="flex items-center justify-center p-8 text-gray-500">
+                                        <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                        Carregando horários...
+                                    </div>
+                                ) : availableSlots.length > 0 ? (
+                                    <div className="border rounded-lg overflow-hidden max-h-64 overflow-y-auto">
+                                        {availableSlots.map((slot) => (
+                                            <div
+                                                key={slot}
+                                                onClick={() => setSelectedTimeSlot(slot)}
+                                                className={`
+                                                    flex items-center justify-between p-4 border-b last:border-b-0 cursor-pointer transition-colors
+                                                    ${selectedTimeSlot === slot 
+                                                        ? 'bg-[#317CE5] text-white' 
+                                                        : 'bg-white hover:bg-gray-50'
+                                                    }
+                                                `}
+                                            >
+                                                <span className="font-medium text-lg">
+                                                    {slot.includes('T') ? slot.split('T')[1].substring(0, 5) : slot}
+                                                </span>
+                                                <span className="text-sm opacity-75">
+                                                    Disponível
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <div className="text-center p-8 text-gray-500 border rounded-lg bg-gray-50">
+                                        <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                                        <p>Nenhum horário disponível para este serviço</p>
+                                        <p className="text-xs mt-1">Tente selecionar outro dia</p>
+                                    </div>
+                                )}
+                            </div>
+                        )}
                         
                         <div className="flex gap-2 justify-end">
                             <Button 

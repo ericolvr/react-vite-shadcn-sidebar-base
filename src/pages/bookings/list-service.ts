@@ -182,6 +182,50 @@ class BookingsListService {
         }
     }
 
+    // Deletar booking
+    async deleteBooking(bookingId: string): Promise<void> {
+        try {
+            await axios.delete(`${BASE_URL}/bookings/${bookingId}`)
+        } catch (error: any) {
+            const apiError: ApiError = {
+                message: error.response?.data?.message || 'Erro ao deletar agendamento',
+                status: error.response?.status || 500,
+                details: error.response?.data
+            }
+            throw apiError
+        }
+    }
+
+    // Buscar slots disponíveis
+    async getAvailableSlots(companyId: number, date: string, serviceIds: number[]): Promise<string[]> {
+        try {
+            const serviceIdsParam = serviceIds.join(',')
+            const response: AxiosResponse<any> = await axios.get(
+                `${BASE_URL}/availability/slots?company_id=${companyId}&date=${date}&service_ids=${serviceIdsParam}`
+            )
+            
+            // Log para debug
+            console.log(' Resposta da API slots:', response.data)
+            
+            // Extrair slots da resposta (pode ser array direto ou dentro de propriedade)
+            let slots = response.data.available_slots || response.data || []
+            
+            // Se for array de objetos, extrair apenas os horários
+            if (Array.isArray(slots) && slots.length > 0 && typeof slots[0] === 'object') {
+                slots = slots.map(slot => slot.time || slot.start_time || slot.hour || slot.toString())
+            }
+            
+            return slots.filter((slot: any) => typeof slot === 'string')
+        } catch (error: any) {
+            const apiError: ApiError = {
+                message: error.response?.data?.message || 'Erro ao buscar slots disponíveis',
+                status: error.response?.status || 500,
+                details: error.response?.data
+            }
+            throw apiError
+        }
+    }
+
     // DADOS SIMULADOS (para demonstração)
     private getMockBookings(
         page: number, 
