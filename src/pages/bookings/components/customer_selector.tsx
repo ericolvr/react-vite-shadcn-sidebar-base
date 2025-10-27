@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { Search, Car, User, Phone } from 'lucide-react'
+import { Search } from 'lucide-react'
 import { vehicleService, type Vehicle } from './vehicle-service'
 
 interface CustomerSelectorProps {
@@ -19,25 +19,35 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
     // Buscar veículos quando o query mudar
     useEffect(() => {
         const searchVehicles = async () => {
+            console.log('🔤 Query atual:', searchQuery, 'Tamanho:', searchQuery.length)
+            
             if (searchQuery.length < 2) {
+                console.log('⏹️ Query muito pequeno, limpando resultados')
                 setVehicles([])
                 return
             }
 
             try {
+                console.log('⏳ Iniciando busca com query:', searchQuery)
                 setLoading(true)
                 const results = await vehicleService.searchForBook(1, searchQuery)
+                console.log('✅ Resultados recebidos no componente:', results)
                 setVehicles(results)
             } catch (error) {
-                console.error('Erro ao buscar veículos:', error)
+                console.error('💥 Erro no componente ao buscar veículos:', error)
                 setVehicles([])
             } finally {
                 setLoading(false)
+                console.log('🏁 Busca finalizada')
             }
         }
 
+        console.log('⏰ Configurando debounce para query:', searchQuery)
         const debounceTimer = setTimeout(searchVehicles, 300)
-        return () => clearTimeout(debounceTimer)
+        return () => {
+            console.log('🧹 Limpando timer anterior')
+            clearTimeout(debounceTimer)
+        }
     }, [searchQuery])
 
     const handleVehicleSelect = (vehicle: Vehicle) => {
@@ -56,25 +66,8 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                     className="border rounded-lg p-4 bg-[#317CE5] text-white cursor-pointer hover:bg-[#2563eb] transition-colors"
                     onClick={() => setIsOpen(true)}
                 >
-                    <div className="flex items-center gap-3">
-                        <Car className="h-5 w-5" />
-                        <div className="flex-1">
-                            <div className="font-medium">
-                                {selectedVehicle.plate} - {selectedVehicle.brand} {selectedVehicle.model}
-                            </div>
-                            {selectedVehicle.owner_name && (
-                                <div className="text-sm opacity-90 flex items-center gap-1 mt-1">
-                                    <User className="h-3 w-3" />
-                                    {selectedVehicle.owner_name}
-                                    {selectedVehicle.owner_phone && (
-                                        <>
-                                            <Phone className="h-3 w-3 ml-2" />
-                                            {selectedVehicle.owner_phone}
-                                        </>
-                                    )}
-                                </div>
-                            )}
-                        </div>
+                    <div className="font-medium">
+                        {selectedVehicle.plate} - {selectedVehicle.client_name || selectedVehicle.owner_name} - {selectedVehicle.client_phone || selectedVehicle.phone || selectedVehicle.owner_phone}
                     </div>
                 </div>
             ) : (
@@ -109,28 +102,8 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
                                         onClick={() => handleVehicleSelect(vehicle)}
                                         className="p-3 hover:bg-gray-50 cursor-pointer border-b last:border-b-0"
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <Car className="h-4 w-4 text-gray-400" />
-                                            <div className="flex-1">
-                                                <div className="font-medium text-sm">
-                                                    {vehicle.plate} - {vehicle.brand} {vehicle.model}
-                                                </div>
-                                                <div className="text-xs text-gray-500">
-                                                    {vehicle.color} • {vehicle.year}
-                                                </div>
-                                                {vehicle.owner_name && (
-                                                    <div className="text-xs text-gray-600 flex items-center gap-1 mt-1">
-                                                        <User className="h-3 w-3" />
-                                                        {vehicle.owner_name}
-                                                        {vehicle.owner_phone && (
-                                                            <>
-                                                                <Phone className="h-3 w-3 ml-2" />
-                                                                {vehicle.owner_phone}
-                                                            </>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
+                                        <div className="font-medium text-sm">
+                                            {vehicle.plate} - {vehicle.client_name || vehicle.owner_name} - {vehicle.client_phone || vehicle.phone || vehicle.owner_phone}
                                         </div>
                                     </div>
                                 ))
