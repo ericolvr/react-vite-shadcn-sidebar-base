@@ -411,13 +411,6 @@ export function BookingsList() {
         }
 
         try {
-            console.log('🚀 Iniciando criação de booking...')
-            console.log('📅 Data selecionada:', modalSelectedDate)
-            console.log('⏰ Horário selecionado:', selectedTimeSlot)
-            console.log('⏰ Tipo do horário:', typeof selectedTimeSlot)
-            console.log('⏰ Horário como string:', JSON.stringify(selectedTimeSlot))
-            
-            console.log('🚨 VOCÊ CLICOU EM QUE HORÁRIO? Verifique se selectedTimeSlot está correto!')
             
             // Combinar data + horário de forma mais segura
             const scheduledDateTime = new Date(modalSelectedDate)
@@ -429,19 +422,16 @@ export function BookingsList() {
             
             // Limpar e validar horário
             let cleanTimeSlot = selectedTimeSlot.trim()
-            console.log('⏰ Horário limpo:', cleanTimeSlot)
             
             // Se o horário está no formato ISO (2025-10-27T08:00:00Z), extrair apenas a parte do horário
             if (cleanTimeSlot.includes('T')) {
                 // CORREÇÃO: Extrair horário diretamente da string ISO sem conversão de timezone
                 const timePart = cleanTimeSlot.split('T')[1].split('Z')[0] // "16:00:00"
                 cleanTimeSlot = timePart.substring(0, 5) // "16:00"
-                console.log('⏰ Horário extraído do ISO (SEM conversão timezone):', cleanTimeSlot)
             }
             
             // Parsear horário
             const timeParts = cleanTimeSlot.split(':')
-            console.log('⏰ Partes do horário:', timeParts)
             
             if (timeParts.length !== 2) {
                 throw new Error(`Formato de horário inválido: esperado HH:MM, recebido: "${cleanTimeSlot}"`)
@@ -456,8 +446,6 @@ export function BookingsList() {
             
             scheduledDateTime.setHours(hours, minutes, 0, 0)
             
-            console.log('📅 Data/hora combinada:', scheduledDateTime)
-            console.log('📅 Timezone offset:', scheduledDateTime.getTimezoneOffset())
             
             // NOVA ABORDAGEM: Enviar horário local com timezone em vez de UTC
             // Isso evita problemas de sincronização entre frontend e backend
@@ -476,44 +464,10 @@ export function BookingsList() {
             const hourStr = String(scheduledDateTime.getHours()).padStart(2, '0')
             const minuteStr = String(scheduledDateTime.getMinutes()).padStart(2, '0')
             
-            console.log('🔍 DEBUG HORÁRIO - VERSÃO ATUALIZADA:', {
-                horasParsedas: hours,
-                minutosParsedos: minutes,
-                horasScheduledDateTime: scheduledDateTime.getHours(),
-                minutosScheduledDateTime: scheduledDateTime.getMinutes(),
-                scheduledDateTimeCompleto: scheduledDateTime.toString()
-            })
             
             // Formato: YYYY-MM-DDTHH:MM:SS-03:00 (com timezone local)
             const scheduledAtISO = `${year}-${month}-${day}T${hourStr}:${minuteStr}:00${timezoneString}`
             
-            console.log('📅 ISO String (com timezone local):', scheduledAtISO)
-            
-            // Verificar detalhes do timezone
-            console.log('🌍 DETALHES DO TIMEZONE:')
-            console.log('├─ Offset em minutos:', offset)
-            console.log('├─ Offset em horas:', offsetHours)
-            console.log('├─ Sinal do offset:', offsetSign)
-            console.log('├─ String do timezone:', timezoneString)
-            console.log('└─ Timezone detectado:', offset === 180 ? 'UTC-3 (Brasil)' : `UTC${offsetSign}${offsetHours}`)
-            
-            // Comparação com horário local (não mais UTC)
-            const agora = new Date()
-            console.log('📅 Comparação com timezone local:', {
-                agoraLocal: agora.toLocaleString('pt-BR'),
-                scheduledLocal: scheduledDateTime.toLocaleString('pt-BR'),
-                agoraISO: agora.toISOString(),
-                scheduledISO: scheduledAtISO,
-                isFuture: scheduledDateTime > agora,
-                diferençaMinutos: (scheduledDateTime.getTime() - agora.getTime()) / (1000 * 60)
-            })
-            
-            // Como o backend Go vai interpretar
-            console.log('🔍 COMO BACKEND VAI INTERPRETAR:')
-            console.log('├─ Recebe:', scheduledAtISO)
-            console.log('├─ Parseia como:', new Date(scheduledAtISO).toString())
-            console.log('├─ Converte para UTC:', new Date(scheduledAtISO).toISOString())
-            console.log('└─ Compara com now.UTC():', 'Agora ambos consideram timezone!')
 
             const bookingData: CreateBookingRequest = {
                 company_id: selectedVehicle.company_id,
@@ -524,22 +478,9 @@ export function BookingsList() {
                 notes: ""
             }
 
-            console.log('📋 Dados do booking:', bookingData)
-            
-            // 🔍 MOSTRAR VALOR E FORMATO DETALHADO DO AGENDAMENTO
-            console.log('🕐 DETALHES DO AGENDAMENTO:')
-            console.log('├─ Valor enviado:', bookingData.scheduled_at)
-            console.log('├─ Tipo:', typeof bookingData.scheduled_at)
-            console.log('├─ Comprimento:', bookingData.scheduled_at.length)
-            console.log('├─ Formato esperado:', 'YYYY-MM-DDTHH:MM:SSZ')
-            console.log('├─ Tem "T"?', bookingData.scheduled_at.includes('T'))
-            console.log('├─ Tem "Z"?', bookingData.scheduled_at.endsWith('Z'))
-            console.log('├─ Caracteres:', bookingData.scheduled_at.split('').map((c: string, i: number) => `${i}:${c}`))
-            console.log('└─ Parseado como Date:', new Date(bookingData.scheduled_at).toString())
 
             const newBooking = await bookingsListService.createBooking(bookingData)
             
-            console.log('✅ Booking criado:', newBooking)
             
             // Fechar modal e limpar estados
             setIsNewBookingModalOpen(false)
@@ -550,8 +491,6 @@ export function BookingsList() {
             
             // Recarregar lista de bookings
             loadData()
-            
-            alert('Agendamento criado com sucesso!')
             
         } catch (error: any) {
             console.error('💥 Erro ao criar booking:', error)
