@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { 
     Calendar, 
     Clock, 
@@ -25,6 +27,7 @@ import {
 } from 'lucide-react'
 import { bookingsListService, type Booking, type BookingService } from './list-service'
 import { companySettingsService, type CompanySettingsResponse } from '../settings/service'
+import { servicesService, type ServiceResponse } from '../services/service'
 
 type BookingStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled'
 
@@ -43,6 +46,9 @@ export function BookingsList() {
     const [loading, setLoading] = useState(true)
     const [error, setError] = useState<string | null>(null)
     const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+    const [isNewBookingModalOpen, setIsNewBookingModalOpen] = useState(false)
+    const [services, setServices] = useState<ServiceResponse[]>([])
+    const [selectedService, setSelectedService] = useState<string>('')
     const [pagination, setPagination] = useState({
         page: 1,
         limit: 20,
@@ -221,8 +227,19 @@ export function BookingsList() {
         }
     }
 
+    // Carregar serviços
+    const loadServices = async () => {
+        try {
+            const response = await servicesService.getServices(1, 100) // Buscar todos os serviços
+            setServices(response.services.filter(service => service.active)) // Apenas serviços ativos
+        } catch (error) {
+            console.error('Erro ao carregar serviços:', error)
+        }
+    }
+
     useEffect(() => {
         loadData()
+        loadServices() // Carregar serviços também
     }, [pagination.page, selectedDate])
 
     const getStatusColor = (status: BookingStatus): string => {
@@ -314,7 +331,7 @@ export function BookingsList() {
                     <div className='flex justify-between items-center'>
                         <div className='flex gap-2'>
                             <Button 
-                                onClick={() => nav('/bookings')} 
+                                onClick={() => setIsNewBookingModalOpen(true)} 
                                 className='bg-[#317CE5] hover:bg-[#2563eb]'
                                 size="sm"
                             >
@@ -513,6 +530,50 @@ export function BookingsList() {
 
                 </div>
             </SidebarInset>
+
+            {/* Dialog de Novo Agendamento */}
+            <Dialog open={isNewBookingModalOpen} onOpenChange={setIsNewBookingModalOpen}>
+                <DialogContent className="sm:max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle>Novo Agendamento</DialogTitle>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4">
+                        <div className="space-y-2">
+                            <Select value={selectedService} onValueChange={setSelectedService}>
+                                <SelectTrigger className="w-full h-[60px]">
+                                    <SelectValue placeholder="Selecione um serviço" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    {services.map((service) => (
+                                        <SelectItem key={service.id} value={service.id.toString()}>
+                                            <div className="flex justify-between items-center w-full">
+                                                <span>{service.name}</span>
+                                                <div className="flex gap-2 text-xs text-gray-500 ml-2">
+                                                    <span>R$ {service.price.toFixed(2)}</span>
+                                                    <span>{service.duration}min</span>
+                                                </div>
+                                            </div>
+                                        </SelectItem>
+                                    ))}
+                                </SelectContent>
+                            </Select>
+                        </div>
+                        
+                        <div className="flex gap-2 justify-end">
+                            <Button 
+                                variant="outline" 
+                                onClick={() => setIsNewBookingModalOpen(false)}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button className="bg-[#317CE5] hover:bg-[#2563eb]">
+                                Salvar
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </SidebarProvider>
     )
 }
