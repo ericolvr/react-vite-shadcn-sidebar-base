@@ -43,74 +43,46 @@ export function SignIn() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         
-        console.log('🚀 Iniciando processo de login...');
-        console.log('📱 Mobile digitado:', mobile);
-        console.log('🔒 Password digitado:', password ? '***' : 'vazio');
-        
         if (!mobile.trim()) {
-            console.log('❌ Erro: Mobile vazio');
             alert('Por favor, digite seu celular');
             return;
         }
         
         if (!password.trim()) {
-            console.log('❌ Erro: Password vazio');
             alert('Por favor, digite sua senha');
             return;
         }
 
         try {
             setLoading(true);
-            console.log('⏳ Loading ativado...');
-            
             // Remove formatação do celular para enviar apenas números
             const cleanMobile = mobile.replace(/\D/g, '');
-            console.log('🧹 Mobile limpo (sem formatação):', cleanMobile);
             
             const data = {
                 mobile: cleanMobile,
                 password: password,
                 company_id: 1
             };
-            
-            console.log('📡 Dados que serão enviados para API:', data);
-            console.log('🌐 URL da API:', `${import.meta.env.VITE_API_URL}/login`);
-
             const response = await ApiSignIn.GetToken({ data });
             
-            console.log('✅ Resposta da API recebida:', response);
-            console.log('👤 Dados do usuário:', response.user);
-            console.log('🔑 Token recebido:', response.token ? 'Token presente' : 'Token ausente');
-            
             if (response.token) {
-                console.log('💾 Salvando dados no contexto...');
                 login(response);
-                console.log('🎯 Navegando para dashboard...');
                 nav("/dashboard");
             } else {
-                console.log('❌ Token não encontrado na resposta');
                 alert('Erro: Token não recebido');
             }
-        } catch (error: any) {
-            console.log('💥 Erro capturado:', error);
-            console.log('📄 Detalhes do erro:', {
-                message: error?.message,
-                status: error?.status,
-                details: error?.details
-            });
-            
+        } catch (error: any) {            
             const errorMessage = error?.message || 'Erro ao fazer login. Tente novamente.';
             alert(errorMessage);
         } finally {
             setLoading(false);
-            console.log('⏹️ Loading desativado');
         }
     };
 
     return (
         <main className='flex h-screen w-full'>
             <div className='bg-[#F6F6F7] w-full h-full flex items-center justify-center'>
-                <img src={BgImage} alt="My SVG" className=' w-[55%] h-[55%]' />
+                <img src={BgImage} alt="Login" className=' w-[55%] h-[55%]' />
             </div>
             <section className='flex bg-backgroundmax-w-3xl w-full  justify-center items-center'>
                 <Card className='w-[360px]'>

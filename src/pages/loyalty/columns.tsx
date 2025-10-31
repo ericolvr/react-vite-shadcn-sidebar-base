@@ -6,11 +6,11 @@ import {
     ArrowUpDown, 
     Pencil,
     Eye,
-    Gift,
     Loader2,
     X,
     Plus,
-    Minus
+    Minus,
+    Car
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
@@ -33,73 +33,42 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { type LoyaltyAccountResponse, type PointsTransactionResponse, loyaltyService } from './service'
+import { type LoyaltyAccountResponse, loyaltyService } from './service'
 
 // Tipo para contas de fidelidade da API
 export type LoyaltyAccount = LoyaltyAccountResponse
 
-// Componente interno para o drawer do histórico de pontos
-const PointsHistoryDrawer = ({ account }: { account: LoyaltyAccount }) => {
-    const [transactions, setTransactions] = useState<PointsTransactionResponse[]>([])
+// Componente interno para o drawer dos veículos
+const VehiclesDrawer = ({ account }: { account: LoyaltyAccount }) => {
+    const [vehicles, setVehicles] = useState<any[]>([])
     const [loading, setLoading] = useState(true)
 
-    const loadTransactions = async () => {
+
+    const loadVehicles = async () => {
         try {
             setLoading(true)
-            const accountTransactions = await loyaltyService.getPointsHistory(account.id.toString())
-            setTransactions(accountTransactions)
+            const clientVehicles = await loyaltyService.getClientVehicles(account.client_id)
+            setVehicles(clientVehicles)
         } catch (error) {
-            console.error('Erro ao carregar histórico de pontos:', error)
-            setTransactions([])
+            console.error('Erro ao carregar veículos:', error)
+            setVehicles([])
         } finally {
             setLoading(false)
         }
     }
 
-    // Carregar transações automaticamente quando o drawer abrir
+    // Carregar veículos automaticamente quando o drawer abrir
     React.useEffect(() => {
-        loadTransactions()
+        loadVehicles()
     }, [account.id])
 
-    const formatDate = (dateString: string) => {
-        return new Date(dateString).toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-            hour: '2-digit',
-            minute: '2-digit'
-        })
-    }
-
-    const getTransactionTypeLabel = (type: string) => {
-        const types = {
-            'earned': 'Ganhou',
-            'redeemed': 'Resgatou',
-            'expired': 'Expirou',
-            'adjusted': 'Ajuste'
-        }
-        return types[type as keyof typeof types] || type
-    }
-
-    const getTransactionTypeColor = (type: string) => {
-        const colors = {
-            'earned': 'text-green-600',
-            'redeemed': 'text-red-600',
-            'expired': 'text-gray-600',
-            'adjusted': 'text-blue-600'
-        }
-        return colors[type as keyof typeof colors] || 'text-gray-600'
-    }
 
     return (
-        <SheetContent side="right" className="w-[600px] sm:w-[640px]">
+        <SheetContent side="right" className="w-[500px] sm:w-[540px]">
             <SheetHeader className="border-b relative">
                 <SheetTitle className="text-lg font-bold pr-8">
-                    {account.client_name} - Histórico de Pontos
+                    {account.client_name}
                 </SheetTitle>
-                <div className="text-sm text-gray-600">
-                    Pontos Atuais: <span className="font-semibold text-blue-600">{account.current_points}</span>
-                </div>
                 <SheetClose asChild>
                     <button className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
                         <X className="h-4 w-4" />
@@ -112,39 +81,48 @@ const PointsHistoryDrawer = ({ account }: { account: LoyaltyAccount }) => {
                 {loading ? (
                     <div className="flex items-center justify-center py-8">
                         <Loader2 className="h-6 w-6 animate-spin mr-3" />
-                        <span className="text-gray-500">Carregando histórico...</span>
+                        <span className="text-gray-500">Carregando veículos...</span>
                     </div>
-                ) : transactions.length > 0 ? (
-                    <div className="space-y-4">
-                        {transactions.map((transaction) => (
-                            <div key={transaction.id} className="border border-gray-200 rounded-lg p-4">
-                                <div className="flex justify-between items-start mb-2">
-                                    <div className="flex items-center gap-2">
-                                        <span className={`font-semibold ${getTransactionTypeColor(transaction.type)}`}>
-                                            {getTransactionTypeLabel(transaction.type)}
-                                        </span>
-                                        <span className="font-bold text-lg">
-                                            {transaction.type === 'redeemed' ? '-' : '+'}{transaction.points} pts
-                                        </span>
-                                    </div>
-                                    <span className="text-sm text-gray-500">
-                                        {formatDate(transaction.created_at)}
-                                    </span>
-                                </div>
-                                <p className="text-gray-700 text-sm">{transaction.description}</p>
-                                {transaction.reference_type && (
-                                    <div className="mt-2 text-xs text-gray-500">
-                                        Ref: {transaction.reference_type} #{transaction.reference_id}
-                                    </div>
-                                )}
-                            </div>
-                        ))}
+                ) : vehicles.length > 0 ? (
+                    <div className="border border-gray-200 rounded-md overflow-hidden">
+                        <div className="bg-gray-50 px-4 py-3 border-b border-gray-200">
+                            <h3 className="text-sm font-semibold text-gray-900">Dados do Veículo</h3>
+                        </div>
+                        <div className="bg-white">
+                            <table className="w-full text-sm border-collapse">
+                                <tbody>
+                                    {vehicles.map((vehicle, index) => (
+                                        <React.Fragment key={vehicle.id || index}>
+                                            <tr className="border-b border-gray-100">
+                                                <td className="px-4 py-3 text-gray-900 font-medium w-1/2 border-r border-gray-100">
+                                                    {vehicle.model || 'Modelo não informado'}
+                                                </td>
+                                                <td className="px-4 py-3 text-gray-900 font-medium w-1/2">
+                                                    {vehicle.plate || 'Placa não informada'}
+                                                </td>
+                                            </tr>
+                                            <tr className={index < vehicles.length - 1 ? 'border-b border-gray-100' : ''}>
+                                                <td className="px-4 py-3 text-gray-900 w-1/2 border-r border-gray-100">
+                                                    {vehicle.brand || 'Marca não informada'}
+                                                </td>
+                                                <td className="px-4 py-3 text-gray-900 w-1/2">
+                                                    {vehicle.type === 'car' ? 'Carro' : 
+                                                     vehicle.type === 'motorcycle' ? 'Moto' : 
+                                                     vehicle.type === 'truck' ? 'Caminhão' : 
+                                                     vehicle.type || 'Tipo não informado'}
+                                                </td>
+                                            </tr>
+                                        </React.Fragment>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center py-12 text-center">
-                        <Gift className="h-12 w-12 text-gray-300 mb-4" />
-                        <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhuma transação encontrada</h3>
-                        <p className="text-gray-500">Esta conta ainda não possui histórico de pontos.</p>
+                        <Car className="h-12 w-12 text-gray-300 mb-4" />
+                        <h3 className="text-lg font-medium text-gray-900 mb-2">Nenhum veículo encontrado</h3>
+                        <p className="text-gray-500">Este cliente ainda não possui veículos cadastrados.</p>
                     </div>
                 )}
             </div>
@@ -284,7 +262,7 @@ export const columns = (
         },
     },
     {
-        accessorKey: 'current_points',
+        accessorKey: 'points',
         header: ({ column }) => {
             return (
                 <Button
@@ -298,9 +276,13 @@ export const columns = (
             )
         },
         cell: ({ row }) => {
-            const points = row.getValue('current_points') as number
+            const points = row.getValue('points') as number
+            // Verificar se points existe antes de formatar
+            if (points === undefined || points === null) {
+                return <div className='pl-3 text-[15px] font-semibold text-black'>0 pts</div>
+            }
             return (
-                <div className='pl-3 text-[15px] font-semibold text-blue-600'>
+                <div className='pl-3 text-[15px] font-semibold text-black'>
                     {points.toLocaleString()} pts
                 </div>
             )
@@ -322,15 +304,19 @@ export const columns = (
         },
         cell: ({ row }) => {
             const points = row.getValue('total_earned') as number
+            // Verificar se points existe antes de formatar
+            if (points === undefined || points === null) {
+                return <div className='pl-3 text-[15px] text-black'>0 pts</div>
+            }
             return (
-                <div className='pl-3 text-[15px] text-green-600'>
+                <div className='pl-3 text-[15px] text-black'>
                     {points.toLocaleString()} pts
                 </div>
             )
         },
     },
     {
-        accessorKey: 'status',
+        accessorKey: 'level',
         header: ({ column }) => {
             return (
                 <Button
@@ -338,23 +324,24 @@ export const columns = (
                     onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
                     className='font-bold text-[12.5px] hover:bg-transparent'
                 >
-                    STATUS
+                    NÍVEL
                     <ArrowUpDown className='ml-2 h-4 w-4' />
                 </Button>
             )
         },
         cell: ({ row }) => {
-            const status = row.getValue('status') as string
-            const statusConfig = {
-                'active': { label: 'Ativo', color: 'text-green-600' },
-                'inactive': { label: 'Inativo', color: 'text-gray-600' },
-                'suspended': { label: 'Suspenso', color: 'text-red-600' }
+            const level = row.getValue('level') as string
+            const levelConfig = {
+                'bronze': { label: 'Bronze', color: 'text-amber-600' },
+                'silver': { label: 'Prata', color: 'text-gray-600' },
+                'gold': { label: 'Ouro', color: 'text-yellow-600' },
+                'platinum': { label: 'Platina', color: 'text-purple-600' }
             }
-            const config = statusConfig[status as keyof typeof statusConfig] || { label: 'Ativo', color: 'text-green-600' }
+            const config = levelConfig[level as keyof typeof levelConfig] || { label: 'Bronze', color: 'text-amber-600' }
             
             return (
                 <div className='pl-3 text-[15px]'>
-                    <span className={config.color}>
+                    <span className={`font-semibold ${config.color}`}>
                         {config.label}
                     </span>
                 </div>
@@ -376,13 +363,13 @@ export const columns = (
                         <SheetTrigger asChild>
                             <div 
                                 className='h-10 w-10 flex items-center justify-center rounded hover:bg-muted cursor-pointer'
-                                title='Ver Histórico'
+                                title='Ver Veículos'
                                 onClick={(e) => e.stopPropagation()}
                             >
                                 <Eye className='h-5 w-5 cursor-pointer' strokeWidth={1.5} />
                             </div>
                         </SheetTrigger>
-                        <PointsHistoryDrawer account={account} />
+                        <VehiclesDrawer account={account} />
                     </Sheet>
 
                     {/* Adicionar Pontos */}

@@ -7,10 +7,11 @@ import { Services } from '@/pages/services'
 import { ServicesAdd } from '@/pages/services/add'
 import { Settings } from '@/pages/settings'
 import { Clients } from '@/pages/clients'
+import { ClientsAdd } from '@/pages/clients/add'
+import { ClientsEdit } from '@/pages/clients/edit'
 import { Vehicles } from '@/pages/vehicles'
 // import { VehiclesAdd } from '@/pages/vehicles/add'
 import { VehiclesEdit } from '@/pages/vehicles/edit'
-import { ClientsEdit } from '@/pages/clients/edit'
 import { ServicesEdit } from '@/pages/services/edit'
 import { Loyalty } from '@/pages/loyalty'
 import { LoyaltyDashboard } from '@/pages/loyalty/dashboard'
@@ -33,6 +34,7 @@ export function AppRoutes() {
                         <Route path="/services/edit/:id" element={<ServicesEdit />} />
                         <Route path="/settings" element={<Settings />} />
                         <Route path="/clients" element={<Clients />} />
+                        <Route path="/clients/add" element={<ClientsAdd />} />
                         <Route path="/clients/edit/:id" element={<ClientsEdit />} />
                         <Route path="/vehicles" element={<Vehicles />} />
                         <Route path="/vehicles/edit/:id" element={<VehiclesEdit />} />

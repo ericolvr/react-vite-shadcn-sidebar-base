@@ -132,15 +132,6 @@ export function DataTable<TData, TValue>({
 						}}
 						className='rounded-md max-w-sm h-[44px] bg-[#F9F9F9] border border-[#EFEFEF] outline-none focus:outline-none focus:ring-0 focus:border-[#EFEFEF] focus-visible:ring-0 focus-visible:ring-offset-0 focus-visible:outline-none !shadow-none'
 					/>
-
-					{addUrl && (
-						<Link to={addUrl}>
-							<Button className='bg-[#317CE5] hover:bg-[#2563eb] text-white h-[44px] px-6 cursor-pointer text-[14.5px]'>
-								<Plus className="h-4 w-4" />
-								<span className='pl-2 pr-4'>Nova Conta</span>
-							</Button>
-						</Link>
-					)}
 				</div>
 			</div>
 

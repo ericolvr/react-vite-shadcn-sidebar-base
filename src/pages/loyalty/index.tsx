@@ -5,8 +5,7 @@ import { Header } from '@/components/header'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { DataTable } from './data-table'
 import { columns, type LoyaltyAccount } from './columns'
-import { Button } from '@/components/ui/button'
-import { Loader2, MoveLeft, MoveRight, RefreshCw } from 'lucide-react'
+import { Loader2, MoveLeft, MoveRight } from 'lucide-react'
 import { loyaltyService } from './service'
 
 export function Loyalty() {
@@ -78,8 +77,17 @@ export function Loyalty() {
 		}
 	}
 
+	// Auto-refresh a cada 2 minutos
 	useEffect(() => {
 		getLoyaltyAccounts()
+		
+		// Configurar intervalo para atualizar a cada 2 minutos
+		const interval = setInterval(() => {
+			getLoyaltyAccounts(pagination.page)
+		}, 2 * 60 * 1000) // 2 minutos
+		
+		// Cleanup do intervalo quando componente for desmontado
+		return () => clearInterval(interval)
 	}, [])
 
 	return (
@@ -94,26 +102,6 @@ export function Loyalty() {
 				/>
 				<div className='flex flex-1 flex-col gap-4 mx-8 pt-0 mt-10 mb-8'>
 					<div className='flex-1 bg-white'>
-						{/* Header com título e ações */}
-						<div className='flex justify-between items-center'>
-							<div>
-								<h1 className='text-2xl font-bold text-gray-900'>Programa de Fidelidade</h1>
-								<p className='text-gray-600'>Contas criadas automaticamente quando agendamentos são completados</p>
-							</div>
-							<div className='flex gap-2'>
-								<Button 
-									onClick={() => nav('/loyalty/dashboard')} 
-									className='bg-[#317CE5] hover:bg-[#2563eb]'
-									size="sm"
-								>
-									📊 Dashboard
-								</Button>
-								<Button onClick={handleRefresh} variant="outline" size="sm">
-									<RefreshCw className='h-4 w-4 mr-2' />
-									Atualizar
-								</Button>
-							</div>
-						</div>
 						{loading ? (
 							<div className='flex items-center justify-center h-64'>
 								<Loader2 className='h-8 w-8 animate-spin' />

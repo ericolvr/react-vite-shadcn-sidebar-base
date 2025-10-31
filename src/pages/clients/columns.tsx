@@ -52,7 +52,7 @@ const VehiclesDrawer = ({ client }: { client: Client }) => {
         <SheetContent side="right" className="w-[500px] sm:w-[540px]">
             <SheetHeader className="border-b relative">
                 <SheetTitle className="text-lg font-bold pr-8">
-                    {client.name}
+                    {client.phone}
                 </SheetTitle>
                 <SheetClose asChild>
                     <button className="absolute right-4 top-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:pointer-events-none">
@@ -119,22 +119,6 @@ export const columns = (
     onEdit?: (id: string) => void
 ): ColumnDef<Client>[] => [
     {
-        accessorKey: 'name',
-        header: ({ column }) => {
-            return (
-                <Button
-                    variant='ghost'
-                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-                    className='font-bold text-[12.5px] hover:bg-transparent'
-                >
-                    NOME
-                    <ArrowUpDown className='ml-2 h-4 w-4' />
-                </Button>
-            )
-        },
-        cell: ({ row }) => <div className='pl-3 text-[15px] font-semibold'>{row.getValue('name')}</div>,
-    },
-    {
         accessorKey: 'phone',
         header: ({ column }) => {
             return (
@@ -153,29 +137,6 @@ export const columns = (
             // Formatar telefone: 11988259998 -> (11) 98825-9998
             const formatted = phone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3')
             return <div className='pl-3 text-[15px]'>{formatted}</div>
-        },
-    },
-    {
-        accessorKey: 'address',
-        header: ({ column }) => {
-            return (
-                <Button
-                    variant='ghost'
-                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-                    className='font-bold text-[12.5px] hover:bg-transparent'
-                >
-                    ENDEREÇO
-                    <ArrowUpDown className='ml-2 h-4 w-4' />
-                </Button>
-            )
-        },
-        cell: ({ row }) => {
-            const address = row.getValue('address') as string
-            return (
-                <div className='pl-3 text-[15px] max-w-xs truncate' title={address}>
-                    {address}
-                </div>
-            )
         },
     },
     {

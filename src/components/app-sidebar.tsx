@@ -139,16 +139,39 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 
-						<SidebarMenuItem>
-							<SidebarMenuButton asChild tooltip='Fidelidade' data-active={location.pathname === '/loyalty'}>
-								<Link to='/loyalty'>
-									<div className='w-[21px] h-[21px]'>
-										<Gift size={21} />
-									</div>
-									<span className='pl-2 font-inter'>Fidelidade</span>
-								</Link>
-							</SidebarMenuButton>
-						</SidebarMenuItem>
+						<Collapsible asChild className='group/collapsible'>
+							<SidebarMenuItem>
+								<CollapsibleTrigger asChild>
+									<SidebarMenuButton tooltip='Fidelidade' data-active={location.pathname.startsWith('/loyalty')}>
+										<div className='w-[21px] h-[21px]'>
+											<Gift size={21} />
+										</div>
+										<span className='pl-2 font-inter'>Fidelidade</span>
+										<ChevronRight className='ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90' size={16} color='#999999' />
+									</SidebarMenuButton>
+								</CollapsibleTrigger>
+								<CollapsibleContent>
+									<SidebarMenuSub>
+										<SidebarMenuSubItem>
+											<SidebarMenuSubButton asChild data-active={location.pathname === '/loyalty'}>
+												<Link to='/loyalty'>
+													<List size={16} />
+													<span className='font-inter'>Lista de Contas</span>
+												</Link>
+											</SidebarMenuSubButton>
+										</SidebarMenuSubItem>
+										<SidebarMenuSubItem>
+											<SidebarMenuSubButton asChild data-active={location.pathname === '/loyalty/dashboard'}>
+												<Link to='/loyalty/dashboard'>
+													<PieChart size={16} />
+													<span className='font-inter'>Dashboard</span>
+												</Link>
+											</SidebarMenuSubButton>
+										</SidebarMenuSubItem>
+									</SidebarMenuSub>
+								</CollapsibleContent>
+							</SidebarMenuItem>
+						</Collapsible>
 
 						<SidebarMenuItem>
 							<SidebarMenuButton asChild tooltip='Configurações' data-active={location.pathname === '/settings'}>
@@ -160,52 +183,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
-
-						{/* <Collapsible asChild className='group/collapsible'>
-							<SidebarMenuItem>
-								<CollapsibleTrigger asChild>
-									<SidebarMenuButton tooltip='Clientes'>
-										<div className='w-[21px] h-[21px]'>
-											<Users size={21} />
-										</div>
-										<span className='pl-2'>Clientes</span>
-										<ChevronRight className='ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90' size={21} color='#999999' />
-									</SidebarMenuButton>
-								</CollapsibleTrigger>
-								<CollapsibleContent>
-									<SidebarMenuSub>
-										<SidebarMenuSubItem>
-											<SidebarMenuSubButton asChild data-active={location.pathname === '/tenants'}>
-												<Link to='/tenants'>
-													<span className='pl-3'>Todos</span>
-												</Link>
-											</SidebarMenuSubButton>
-										</SidebarMenuSubItem>
-										<SidebarMenuSubItem>
-											<SidebarMenuSubButton asChild>
-												<Link to='/owners'>
-													<span className='pl-3'>Proprietários</span>
-												</Link>
-											</SidebarMenuSubButton>
-										</SidebarMenuSubItem>
-										<SidebarMenuSubItem>
-											<SidebarMenuSubButton asChild>
-												<Link to='/tenants'>
-													<span className='pl-3'>Locatários</span>
-												</Link>
-											</SidebarMenuSubButton>
-										</SidebarMenuSubItem>
-										<SidebarMenuSubItem>
-											<SidebarMenuSubButton asChild>
-												<Link to='/buyers'>
-													<span className='pl-3'>Compradores</span>
-												</Link>
-											</SidebarMenuSubButton>
-										</SidebarMenuSubItem>
-									</SidebarMenuSub>
-								</CollapsibleContent>
-							</SidebarMenuItem>
-						</Collapsible>	 */}
 					</SidebarMenu>
 				</SidebarGroup>
 

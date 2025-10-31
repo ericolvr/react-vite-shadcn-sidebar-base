@@ -15,18 +15,10 @@ import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { clientsService, type ClientResponse } from './service'
 
 // Schema de validação para clientes
-const clientSchema = z.object({
-	name: z.string()
-		.min(1, 'Nome é obrigatório')
-		.max(100, 'Nome deve ter no máximo 100 caracteres'),
-	
+const clientSchema = z.object({	
 	phone: z.string()
 		.min(1, 'Telefone é obrigatório')
 		.max(20, 'Telefone deve ter no máximo 20 caracteres'),
-	
-	address: z.string()
-		.min(1, 'Endereço é obrigatório')
-		.max(200, 'Endereço deve ter no máximo 200 caracteres'),
 	
 	role: z.number()
 		.min(1, 'Tipo de cliente é obrigatório')
@@ -42,9 +34,7 @@ export function ClientsEdit() {
 	const form = useForm<ClientForm>({
 		resolver: zodResolver(clientSchema),
 		defaultValues: {
-			name: '',
 			phone: '',
-			address: '',
 			role: undefined
 		}
 	})
@@ -71,9 +61,7 @@ export function ClientsEdit() {
 				
 				// Preencher o formulário com os dados do cliente
 				form.reset({
-					name: clientData.name,
 					phone: clientData.phone,
-					address: clientData.address,
 					role: clientData.role
 				})
 			} catch (err: any) {
@@ -99,9 +87,7 @@ export function ClientsEdit() {
 
 		try {
 			const clientData = {
-				name: data.name,
 				phone: data.phone,
-				address: data.address,
 				role: data.role,
 				company_id: client?.company_id || 1
 			}
@@ -195,24 +181,6 @@ export function ClientsEdit() {
 									<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
 										<FormField
 											control={form.control}
-											name="name"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel className='font-inter font-medium'>Nome</FormLabel>
-													<FormControl>
-														<Input 
-															placeholder="Ex: João Silva"
-															{...field}
-															className='font-inter bg-[#F6F6F7] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
-														/>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-
-										<FormField
-											control={form.control}
 											name="phone"
 											render={({ field }) => (
 												<FormItem>
@@ -220,26 +188,6 @@ export function ClientsEdit() {
 													<FormControl>
 														<Input 
 															placeholder="Ex: (11) 99999-9999"
-															{...field}
-															className='font-inter bg-[#F6F6F7] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
-														/>
-													</FormControl>
-													<FormMessage />
-												</FormItem>
-											)}
-										/>
-									</div>
-
-									<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
-										<FormField
-											control={form.control}
-											name="address"
-											render={({ field }) => (
-												<FormItem>
-													<FormLabel className='font-inter font-medium'>Endereço</FormLabel>
-													<FormControl>
-														<Input 
-															placeholder="Ex: Rua das Flores, 123"
 															{...field}
 															className='font-inter bg-[#F6F6F7] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
 														/>

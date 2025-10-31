@@ -7,9 +7,7 @@ if (!BASE_URL) {
 
 // Tipo de dados para Client
 export type ClientData = {
-	name: string
 	phone: string
-	address: string
 	role: number
 	company_id?: number
 }
@@ -17,9 +15,7 @@ export type ClientData = {
 export type ClientResponse = {
 	id: number
 	company_id: number
-	name: string
 	phone: string
-	address: string
 	role: number
 	created_at: string
 	updated_at: string
@@ -49,7 +45,7 @@ class ClientsService {
 			const offset = (page - 1) * limit
 			
 			const response: AxiosResponse<ClientsListResponse> = await axios.get(
-				`${BASE_URL}/clients?limit=${limit}&offset=${offset}`
+				`${BASE_URL}/clients?limit=${limit}&offset=${offset}&company_id=1` // TODO
 			)
 			
 			// Simular resposta com page para compatibilidade

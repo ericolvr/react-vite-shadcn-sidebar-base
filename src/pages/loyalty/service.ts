@@ -333,6 +333,24 @@ class LoyaltyService {
 			throw apiError
 		}
 	}
+
+	// Buscar veículos do cliente
+	async getClientVehicles(clientId: number): Promise<any[]> {
+		try {
+			const response = await axios.get(
+				`${BASE_URL}/vehicles/client/${clientId}`
+			)
+			return response.data || []
+		} catch (error: any) {
+			console.error('Erro ao buscar veículos do cliente:', error)
+			const apiError: ApiError = {
+				message: error.response?.data?.message || 'Erro ao buscar veículos do cliente',
+				status: error.response?.status || 500,
+				details: error.response?.data
+			}
+			throw apiError
+		}
+	}
 }
 
 export const loyaltyService = new LoyaltyService()
