@@ -18,7 +18,6 @@ export type Booking = {
     id: number
     company_id: number
     client_id: number
-    client_name: string
     client_phone: string
     vehicle_plate: string
     services: BookingService[]

@@ -45,14 +45,18 @@ export type ApiError = {
 class VehiclesService {
 
 	// Buscar todos os veículos da empresa
-	async getVehicles(page: number = 1, limit: number = 20): Promise<VehiclesListResponse> {
+	async getVehicles(page: number = 1, limit: number = 20, companyId?: number): Promise<VehiclesListResponse> {
 		try {
 			// Converter page para offset (page 1 = offset 0)
 			const offset = (page - 1) * limit
 			
-			const response: AxiosResponse<VehiclesListResponse> = await axios.get(
-				`${BASE_URL}/vehicles?limit=${limit}&offset=${offset}`
-			)
+			// Construir URL com company_id se fornecido
+			let url = `${BASE_URL}/vehicles?limit=${limit}&offset=${offset}`
+			if (companyId) {
+				url += `&company_id=${companyId}`
+			}
+			
+			const response: AxiosResponse<VehiclesListResponse> = await axios.get(url)
 			
 			// Simular resposta com page para compatibilidade
 			const responseData = {

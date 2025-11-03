@@ -7,9 +7,11 @@ import { DataTable } from './data-table'
 import { columns, type Client } from './columns'
 import { Loader2, MoveLeft, MoveRight } from 'lucide-react'
 import { clientsService } from './service'
+import { useAuth } from '../../contexts/context'
 
 export function Clients() {
 	const nav = useNavigate()
+	const { user } = useAuth()
 	const [clients, setClients] = useState<Client[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
@@ -23,9 +25,7 @@ export function Clients() {
 	// Colunas para exportação CSV
 	const exportColumns = [
 		{ key: 'id', label: 'ID' },
-		{ key: 'name', label: 'Nome' },
 		{ key: 'phone', label: 'Telefone' },
-		{ key: 'address', label: 'Endereço' },
 		{ key: 'role', label: 'Tipo' },
 	]
 
@@ -34,10 +34,11 @@ export function Clients() {
 			setLoading(true)
 			setError(null)
 			
+			// Obter company_id do contexto de autenticação
+			const companyId = (user as any)?.company_id || 1
+			
 			const limit = 20
-			const offset = (page - 1) * limit
-			console.log(`🔍 Fazendo chamada: page=${page}, limit=${limit}, offset=${offset}`)
-			const response = await clientsService.getClients(page, limit)
+			const response = await clientsService.getClients(page, limit, companyId)
 			console.log('📊 Resposta da API:', response)
 			setClients(response.clients)
 			setPagination({
@@ -107,8 +108,8 @@ export function Clients() {
 								<DataTable 
 									columns={columns(handleEdit)} 
 									data={clients}
-									searchPlaceholder="Filtrar por nome do cliente..."
-									searchColumn="name"
+									searchPlaceholder="Filtrar por telefone..."
+									searchColumn="phone"
 									addUrl="/clients/add"
 									exportColumns={exportColumns}
 									filename="clientes"

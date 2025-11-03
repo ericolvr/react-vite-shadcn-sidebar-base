@@ -17,6 +17,8 @@ export interface AuthContextType extends AuthState {
     login: (data: SignInResponse) => void
     logout: () => void
     hasRole: (requiredRole: number) => boolean
+    getUserData: () => any
+    isLoggedIn: () => boolean
     isLoading: boolean
 }
 

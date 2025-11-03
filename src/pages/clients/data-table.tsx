@@ -49,7 +49,7 @@ export function DataTable<TData, TValue>({
 	columns,
 	data,
 	searchPlaceholder = "Filtrar...",
-	searchColumn = "name",
+	searchColumn = "phone",
 	addUrl = "/services/add",
 	manualPagination = false,
 	pageCount = -1,

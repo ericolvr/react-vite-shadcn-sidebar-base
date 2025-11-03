@@ -39,14 +39,18 @@ export type ApiError = {
 class ClientsService {
 
 	// Buscar todos os clientes da empresa
-	async getClients(page: number = 1, limit: number = 20): Promise<ClientsListResponse> {
+	async getClients(page: number = 1, limit: number = 20, companyId?: number): Promise<ClientsListResponse> {
 		try {
 			// Converter page para offset (page 1 = offset 0)
 			const offset = (page - 1) * limit
 			
-			const response: AxiosResponse<ClientsListResponse> = await axios.get(
-				`${BASE_URL}/clients?limit=${limit}&offset=${offset}&company_id=1` // TODO
-			)
+			// Construir URL com company_id se fornecido
+			let url = `${BASE_URL}/clients?limit=${limit}&offset=${offset}`
+			if (companyId) {
+				url += `&company_id=${companyId}`
+			}
+			
+			const response: AxiosResponse<ClientsListResponse> = await axios.get(url)
 			
 			// Simular resposta com page para compatibilidade
 			const responseData = {

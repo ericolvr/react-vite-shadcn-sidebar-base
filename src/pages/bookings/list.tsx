@@ -137,8 +137,6 @@ export function BookingsList() {
                     ? bookingDateTime.split('T')[1].substring(0, 5) // "12:00" de "2025-10-28T12:00:00Z"
                     : bookingDateTime.substring(11, 16) // "12:00" de "2025-10-28 12:00:00"
                 
-                console.log(`🕐 Booking ${b.id}: ${bookingDateTime} → ${bookingTime} (SEM timezone)`)
-
                 // Calcular duração total dos serviços
                 const totalDuration = b.services.reduce((total: number, service: any) => total + service.duration, 0)
                 
@@ -149,10 +147,6 @@ export function BookingsList() {
 
                 // Verificar se o slot atual está dentro do período do booking
                 const isOccupied = slotMinutes >= bookingStartMinutes && slotMinutes < bookingEndMinutes
-
-                if (isOccupied) {
-                    console.log(`🔍 Slot ${time} ocupado por booking ${bookingTime}-${minutesToTime(bookingEndMinutes)} (ID: ${b.id}, ${totalDuration}min)`)
-                }
 
                 return isOccupied
             })
@@ -181,9 +175,12 @@ export function BookingsList() {
         })
     }
 
-    const loadData = async () => {
+    const loadData = async (isRefresh = false) => {
         try {
-            setLoading(true)
+            // Só mostrar loading na primeira carga, não no refresh automático
+            if (!isRefresh) {
+                setLoading(true)
+            }
             setError(null)
             
             // Gerar slots de tempo para a data selecionada (sem depender de configurações)
@@ -201,8 +198,6 @@ export function BookingsList() {
                 dateString // date
             )
             
-            console.log(`📊 API retornou ${response.bookings.length} agendamentos para ${dateString}`)
-            
             // FILTRO: Manter apenas agendamentos da data selecionada
             const bookingsForSelectedDate = response.bookings.filter((booking: any) => {
                 const bookingDateTime = booking.scheduled_at || booking.started_at
@@ -210,18 +205,8 @@ export function BookingsList() {
                 
                 // Extrair apenas a data (YYYY-MM-DD)
                 const bookingDate = bookingDateTime.split('T')[0]
-                const matches = bookingDate === dateString
-                
-                if (matches) {
-                    console.log(`✅ Booking ${booking.id} pertence ao dia ${dateString}`)
-                } else {
-                    console.log(`❌ Booking ${booking.id} é do dia ${bookingDate}, não ${dateString}`)
-                }
-                
-                return matches
+                return bookingDate === dateString
             })
-            
-            console.log(`🎯 Após filtro: ${bookingsForSelectedDate.length} agendamentos para ${dateString}`)
             
             setBookings(bookingsForSelectedDate)
             setPagination(prev => ({
@@ -392,13 +377,11 @@ export function BookingsList() {
     // Auto-refresh a cada 30 segundos
     useEffect(() => {
         const interval = setInterval(() => {
-            console.log('🔄 Auto-refresh executando...')
-            loadData()
+            loadData(true) // isRefresh = true para não mostrar loading
         }, 30000) // 30 segundos
 
         // Cleanup do interval quando o componente for desmontado
         return () => {
-            console.log('🛑 Limpando auto-refresh interval')
             clearInterval(interval)
         }
     }, []) // Dependência vazia para executar apenas uma vez

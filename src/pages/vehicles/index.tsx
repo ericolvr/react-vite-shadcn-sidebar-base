@@ -7,10 +7,12 @@ import { DataTable } from './data-table'
 import { columns, type Vehicle } from './columns'
 import { Loader2, MoveLeft, MoveRight } from 'lucide-react'
 import { vehiclesService } from './service'
+import { useAuth } from '../../contexts/context'
 
 
 export function Vehicles() {
 	const nav = useNavigate()
+	const { user } = useAuth()
 	const [vehicles, setVehicles] = useState<Vehicle[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
@@ -35,10 +37,11 @@ export function Vehicles() {
 			setLoading(true)
 			setError(null)
 			
+			// Obter company_id do contexto de autenticação
+			const companyId = (user as any)?.company_id || 1
+			
 			const limit = 20
-			const offset = (page - 1) * limit
-			console.log(`🔍 Fazendo chamada: page=${page}, limit=${limit}, offset=${offset}`)
-			const response = await vehiclesService.getVehicles(page, limit)
+			const response = await vehiclesService.getVehicles(page, limit, companyId)
 			console.log('📊 Resposta da API:', response)
 			setVehicles(response.vehicles)
 			setPagination({
