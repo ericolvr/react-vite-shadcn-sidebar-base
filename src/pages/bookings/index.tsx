@@ -5,23 +5,15 @@ import { Header } from '@/components/header'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
 import { 
     Calendar, 
     CalendarClock,
-    ChevronDown,
-    ChevronUp,
-    Clock, 
     User, 
     Car, 
     Phone, 
     MapPin,
-    Search,
-    Filter,
     Plus,
     Loader2,
     Eye,
@@ -29,12 +21,12 @@ import {
     Trash2
 } from 'lucide-react'
 import { servicesService, type ServiceResponse } from '../services/service'
-import { bookingsListService, type CreateBookingRequest, type ScheduleResponse, type ScheduleSlot } from './list-service'
-import CustomerSelector from './components/customer_selector'
+import { bookingsListService, type CreateBookingRequest, type ScheduleSlot } from './list-service'
 import { type Vehicle } from './components/vehicle-service'
 import { useAuth } from '@/contexts/context'
+import AddBookings from './components/AddBookings'
 
-type BookingStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'reserved'
+type BookingStatus = 'reserved' | 'completed' | 'cancelled'
 
 type TimeSlot = {
     time: string
@@ -242,7 +234,7 @@ export function Bookings() {
                         id: scheduleSlot.booking_id,
                         vehicle_plate: 'N/A',
                         services: scheduleSlot.service_names?.map(name => ({ name })) || [],
-                        status: 'confirmed' as BookingStatus,
+                        status: 'reserved' as BookingStatus,
                         client_name: scheduleSlot.client_name || 'Cliente não encontrado',
                         service_names: scheduleSlot.service_names || []
                     }
@@ -428,6 +420,7 @@ export function Bookings() {
 
     // Carregar serviços
     const loadServices = async () => {
+        console.log('🚀 loadServices INICIADO')
         try {
             // Verificar se o usuário está logado
             if (!isLoggedIn()) {
@@ -436,22 +429,34 @@ export function Bookings() {
             }
             
             const userData = getUserData()
+            console.log('👤 userData:', userData)
             if (!userData.company_id) {
+                console.error('❌ Company ID não encontrado no userData')
                 throw new Error('Company ID não encontrado')
             }
             
             console.log('📡 Bookings: Fazendo chamada para servicesService.getServices com company_id:', userData.company_id)
-            const response = await servicesService.getServices(userData.company_id, 100) // Buscar todos os serviços
+            console.log('📡 Bookings: Parâmetros da chamada - company_id:', userData.company_id, 'limit:', 100)
+            const response = await servicesService.getServices(userData.company_id, 1, 100) // page=1, limit=100
             console.log('📊 Bookings: Resposta completa da API:', response)
+            console.log('📊 Bookings: response.services tipo:', typeof response.services)
+            console.log('📊 Bookings: response.services valor:', response.services)
             console.log('📊 Bookings: Total de serviços recebidos:', response.services?.length || 0)
+            
+            if (!response.services || response.services.length === 0) {
+                console.warn('⚠️ Nenhum serviço retornado da API')
+                setServices([])
+                return
+            }
             
             const activeServices = response.services.filter(service => service.active)
             console.log('📊 Bookings: Serviços ativos filtrados:', activeServices.length)
             console.log('📊 Bookings: Lista de serviços ativos:', activeServices)
             
             setServices(activeServices)
+            console.log('✅ setServices executado com', activeServices.length, 'serviços')
         } catch (error) {
-            console.error('Erro ao carregar serviços:', error)
+            console.error('💥 Erro ao carregar serviços:', error)
         }
     }
 
@@ -593,6 +598,20 @@ export function Bookings() {
         console.log('🔍 timeSlots detalhes:', timeSlots)
     }, [timeSlots])
 
+    // Debug: Monitorar mudanças nos services
+    useEffect(() => {
+        console.log('🔍 services atualizados:', services.length, 'serviços')
+        console.log('🔍 services detalhes:', services)
+    }, [services])
+
+    // Carregar serviços quando o modal abrir
+    useEffect(() => {
+        if (isNewBookingModalOpen) {
+            console.log('🔄 Modal aberto - carregando serviços...')
+            loadServices()
+        }
+    }, [isNewBookingModalOpen])
+
     // Recarregar slots quando a data do modal mudar
     useEffect(() => {
         if (selectedService && isNewBookingModalOpen) {
@@ -712,9 +731,7 @@ export function Bookings() {
 
     const getStatusColor = (status: BookingStatus): string => {
         switch (status) {
-            case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-            case 'confirmed': return 'bg-blue-100 text-blue-800 border-blue-200'
-            case 'in_progress': return 'bg-purple-100 text-purple-800 border-purple-200'
+            case 'reserved': return 'bg-purple-100 text-purple-800 border-purple-200'
             case 'completed': return 'bg-green-100 text-green-800 border-green-200'
             case 'cancelled': return 'bg-red-100 text-red-800 border-red-200'
             default: return 'bg-gray-100 text-gray-800 border-gray-200'
@@ -723,12 +740,9 @@ export function Bookings() {
 
     const getStatusLabel = (status: BookingStatus): string => {
         switch (status) {
-            case 'pending': return 'Pendente'
-            case 'confirmed': return 'Confirmado'
-            case 'in_progress': return 'Em Andamento'
-            case 'completed': return 'Concluído'
-            case 'cancelled': return 'Cancelado'
             case 'reserved': return 'Agendado'
+            case 'completed': return 'Finalizado'
+            case 'cancelled': return 'Cancelado'
             default: return status
         }
     }
@@ -810,7 +824,7 @@ export function Bookings() {
                                         className={`
                                             flex flex-col items-center justify-center px-4 py-3 rounded-lg border transition-all font-medium text-sm min-w-[80px]
                                             ${isSelected 
-                                                ? 'bg-[#317CE5] text-white border-[#317CE5]' 
+                                                ? 'bg-gradient-to-r from-[#8E30F4] to-[#4645F8] hover:from-[#7C2BD9] hover:to-[#3B3FE6] text-white' 
                                                 : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200'
                                             }
                                             ${isToday && !isSelected 
@@ -836,14 +850,13 @@ export function Bookings() {
                         {/* Botão Novo Agendamento à direita */}
                         <Button 
                             onClick={() => setIsNewBookingModalOpen(true)} 
-                            className='bg-[#317CE5] hover:bg-[#2563eb] px-4 py-3 h-[60px]'
+                            className='bg-gradient-to-r from-[#8E30F4] to-[#4645F8] hover:from-[#7C2BD9] hover:to-[#3B3FE6] text-white px-6 h-[60px]'
                         >
-                            <CalendarClock className='h-4 w-4 mr-2' />
-                            Novo Agendamento
+                            <Calendar />
+                                Agendar
                         </Button>
                     </div>
 
-                    {/* Tabela de Horários */}
                     <div className='bg-white rounded-md overflow-hidden border border-[#EFEFEF]'>
                         <div className='overflow-x-auto'>
                             <table className='w-full'>
@@ -856,7 +869,7 @@ export function Bookings() {
                                         </th>
                                         <th className='text-left px-6 py-3 text-black text-[12px] font-bold border-b border-gray-100'>
                                             <div className='flex items-center gap-2'>
-                                                PLACA / CONTATO
+                                                VEÍCULO
                                             </div>
                                         </th>
                                         <th className='text-left px-6 py-3 text-black text-[12px] font-bold border-b border-gray-100'>
@@ -999,229 +1012,16 @@ export function Bookings() {
                 </div>
             </SidebarInset>
 
-            {/* Dialog de Novo Agendamento */}
-            <Dialog open={isNewBookingModalOpen} onOpenChange={setIsNewBookingModalOpen}>
-                <DialogContent className="sm:max-w-4xl">
-                    <DialogHeader>
-                        <DialogTitle>Novo Agendamento</DialogTitle>
-                    </DialogHeader>
-                    
-                    <div className="space-y-4">
-                        {/* Linha com Serviço e Dias da Semana */}
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <label className="text-sm font-medium">Serviço</label>
-                                <label className="text-sm font-medium">Data</label>
-                            </div>
-                            <div className="flex gap-4 items-start">
-                                {/* Select de Serviço */}
-                                <div className="flex-1">
-                                    <Select value={selectedService} onValueChange={handleServiceChange}>
-                                        <SelectTrigger className="w-full h-[60px]">
-                                            <SelectValue placeholder="Selecione um serviço" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            {services.map((service) => (
-                                                <SelectItem key={service.id} value={service.id.toString()}>
-                                                    <div className="flex justify-between items-center w-full">
-                                                        <span>{service.name}</span>
-                                                        <div className="flex gap-2 text-xs text-gray-500 ml-2">
-                                                            <span>R$ {service.price.toFixed(2)}</span>
-                                                            <span>{service.duration}min</span>
-                                                        </div>
-                                                    </div>
-                                                </SelectItem>
-                                            ))}
-                                        </SelectContent>
-                                    </Select>
-                                </div>
-
-                                {/* Botões dos Dias da Semana */}
-                                <div className="flex gap-1">
-                                    {generateWeekDays().map((day, index) => {
-                                        const isSelected = day.toDateString() === modalSelectedDate.toDateString()
-                                        const dayName = day.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
-                                        const dayNumber = day.getDate()
-                                        
-                                        // Verificar se é data passada (antes de hoje)
-                                        const today = new Date()
-                                        today.setHours(0, 0, 0, 0) // Zerar horas para comparar apenas a data
-                                        const dayToCompare = new Date(day)
-                                        dayToCompare.setHours(0, 0, 0, 0)
-                                        const isPastDate = dayToCompare < today
-                                        
-                                        return (
-                                            <button
-                                                key={index}
-                                                onClick={() => !isPastDate && setModalSelectedDate(day)}
-                                                disabled={isPastDate}
-                                                className={`
-                                                    flex flex-col items-center justify-center p-2 rounded-lg border transition-colors min-w-[50px] h-[60px]
-                                                    ${isPastDate 
-                                                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50' 
-                                                        : isSelected 
-                                                            ? 'bg-[#317CE5] text-white border-[#317CE5]' 
-                                                            : 'bg-white hover:bg-gray-50 border-gray-200 cursor-pointer'
-                                                    }
-                                                `}
-                                            >
-                                                <span className="text-xs font-medium">{dayName}</span>
-                                                <span className="text-sm font-bold">{dayNumber}</span>
-                                            </button>
-                                        )
-                                    })}
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Collapsible de Horários */}
-                        {selectedService && (
-                            <Collapsible open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
-                                <div className="space-y-2">
-                                    <CollapsibleTrigger asChild>
-                                        <div className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
-                                            selectedTimeSlot 
-                                                ? 'bg-[#317CE5] text-white border-[#317CE5] hover:bg-[#2563eb]' 
-                                                : 'hover:bg-gray-50'
-                                        }`}>
-                                            {selectedTimeSlot ? (
-                                                <div className="flex items-center gap-2">
-                                                    <Clock className="h-4 w-4 text-white" />
-                                                    <span className="font-medium">
-                                                        {services.find(s => s.id.toString() === selectedService)?.name} • {' '}
-                                                        {selectedTimeSlot.includes('T') ? selectedTimeSlot.split('T')[1].substring(0, 5) : selectedTimeSlot} às {' '}
-                                                        {getEndTime(selectedTimeSlot, services.find(s => s.id.toString() === selectedService)?.duration || 0)}
-                                                    </span>
-                                                </div>
-                                            ) : (
-                                                <div className="flex items-center gap-2">
-                                                    <Clock className="h-4 w-4" />
-                                                    <span className="text-sm font-medium">
-                                                        Horários Disponíveis Hoje
-                                                        {loadingSlots && <span className="text-xs text-gray-500 ml-2">(carregando...)</span>}
-                                                    </span>
-                                                </div>
-                                            )}
-                                            <span className="text-xs text-gray-500">
-                                                {isScheduleOpen ? '▲' : '▼'}
-                                            </span>
-                                        </div>
-                                    </CollapsibleTrigger>
-                                    
-                                    <CollapsibleContent>
-                                        {loadingSlots ? (
-                                            <div className="flex items-center justify-center p-8 text-gray-500">
-                                                <Loader2 className="h-6 w-6 animate-spin mr-2" />
-                                                Carregando horários...
-                                            </div>
-                                        ) : availableSlots.length > 0 ? (
-                                            <div className="border rounded-lg overflow-hidden max-h-[32rem] overflow-y-auto">
-                                                {availableSlots.filter((slot) => {
-                                                    // Filtrar horários que já passaram se for hoje
-                                                    const today = new Date()
-                                                    const selectedDay = new Date(modalSelectedDate)
-                                                    
-                                                    // Se não for hoje, mostrar todos os horários
-                                                    if (selectedDay.toDateString() !== today.toDateString()) {
-                                                        return true
-                                                    }
-                                                    
-                                                    // Se for hoje, verificar se o horário já passou
-                                                    let slotTime: string
-                                                    if (slot.includes('T')) {
-                                                        // Formato ISO: "2025-10-27T08:00:00Z"
-                                                        slotTime = slot.split('T')[1].substring(0, 5)
-                                                    } else {
-                                                        // Formato simples: "08:00"
-                                                        slotTime = slot
-                                                    }
-                                                    
-                                                    const [hours, minutes] = slotTime.split(':').map(Number)
-                                                    const slotDateTime = new Date()
-                                                    slotDateTime.setHours(hours, minutes, 0, 0)
-                                                    
-                                                    // Retornar true se o horário ainda não passou
-                                                    return slotDateTime > today
-                                                }).map((slot) => (
-                                                    <div
-                                                        key={slot}
-                                                        onClick={() => handleTimeSlotSelection(slot)}
-                                                        className={`
-                                                            flex items-center justify-between p-4 border-b last:border-b-0 cursor-pointer transition-colors
-                                                            ${selectedTimeSlot === slot 
-                                                                ? 'bg-[#317CE5] text-white' 
-                                                                : isSlotOccupied(slot)
-                                                                    ? 'bg-blue-100 text-blue-800 border-blue-200'
-                                                                    : 'bg-white hover:bg-gray-50'
-                                                            }
-                                                        `}
-                                                    >
-                                                        <span className="font-medium text-sm">
-                                                            {slot.includes('T') ? slot.split('T')[1].substring(0, 5) : slot}
-                                                        </span>
-                                                        <span className="text-sm opacity-75">
-                                                            Disponível
-                                                        </span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        ) : (
-                                            <div className="text-center p-8 text-gray-500 border rounded-lg bg-gray-50">
-                                                <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
-                                                {(() => {
-                                                    const today = new Date()
-                                                    const selectedDay = new Date(modalSelectedDate)
-                                                    const isToday = selectedDay.toDateString() === today.toDateString()
-                                                    
-                                                    if (isToday) {
-                                                        return (
-                                                            <>
-                                                                <p>Nenhum horário disponível hoje</p>
-                                                                <p className="text-xs mt-1">Os horários de hoje já passaram. Tente selecionar outro dia.</p>
-                                                            </>
-                                                        )
-                                                    } else {
-                                                        return (
-                                                            <>
-                                                                <p>Nenhum horário disponível para este serviço</p>
-                                                                <p className="text-xs mt-1">Tente selecionar outro dia</p>
-                                                            </>
-                                                        )
-                                                    }
-                                                })()}
-                                            </div>
-                                        )}
-                                    </CollapsibleContent>
-                                </div>
-                            </Collapsible>
-                        )}
-
-                        {/* Seletor de Cliente - aparece apenas quando horário for selecionado */}
-                        {selectedTimeSlot && (
-                            <CustomerSelector 
-                                onVehicleSelect={setSelectedVehicle}
-                                selectedVehicle={selectedVehicle || undefined}
-                            />
-                        )}
-                        
-                        <div className="flex gap-2 justify-end">
-                            <Button 
-                                variant="outline" 
-                                onClick={() => setIsNewBookingModalOpen(false)}
-                            >
-                                Cancelar
-                            </Button>
-                            <Button 
-                                className="bg-[#317CE5] hover:bg-[#2563eb]"
-                                onClick={handleCreateBooking}
-                                disabled={!selectedVehicle || !selectedService || !selectedTimeSlot}
-                            >
-                                Salvar
-                            </Button>
-                        </div>
-                    </div>
-                </DialogContent>
-            </Dialog>
+            {/* Modal de Novo Agendamento */}
+            <AddBookings
+                isOpen={isNewBookingModalOpen}
+                onClose={() => setIsNewBookingModalOpen(false)}
+                onBookingCreated={() => {
+                    loadData()
+                    loadSchedule(selectedDate)
+                }}
+                selectedDate={selectedDate}
+            />
         </SidebarProvider>
     )
 }

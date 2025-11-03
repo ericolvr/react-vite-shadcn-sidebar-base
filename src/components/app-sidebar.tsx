@@ -6,16 +6,13 @@ import {
 	Calendar,
 	CarFront,
 	CircleGauge,
-	Frame,
 	Gift,
 	Layers2,
-	Map,
 	PieChart,
 	Settings2,
 	Users,
 	ChevronRight,
 	List,
-	Plus,
 } from 'lucide-react'
 
 import { NavUser } from '@/components/nav-user'
@@ -42,7 +39,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 	const location = useLocation()
 	
 	return (
-    	<Sidebar collapsible='icon' {...props}>
+    	<Sidebar collapsible='icon' className='bg-[#FAFAFA] [&>div]:bg-[#FAFAFA] [&_[data-sidebar="sidebar"]]:bg-[#FAFAFA]' {...props}>
       		<SidebarHeader>
         		<div className='mx-2 mt-2 group-data-[collapsible=icon]:ml-4 flex items-center gap-4'>
 					<div className='flex h-8 w-8 items-center justify-center ml-3'>
@@ -82,40 +79,6 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 								</Link>
 							</SidebarMenuButton>
 						</SidebarMenuItem>
-{/* 
-						<Collapsible asChild className='group/collapsible'>
-							<SidebarMenuItem>
-								<CollapsibleTrigger asChild>
-									<SidebarMenuButton tooltip='Agendamentos' data-active={location.pathname.startsWith('/bookings')}>
-										<div className='w-[21px] h-[21px]'>
-											<Calendar size={21} />
-										</div>
-										<span className='pl-2 font-inter'>Agendamentos</span>
-										<ChevronRight className='ml-auto transition-transform duration-200 group-data-[state=open]/collapsible:rotate-90' size={16} color='#999999' />
-									</SidebarMenuButton>
-								</CollapsibleTrigger>
-								<CollapsibleContent>
-									<SidebarMenuSub>
-										<SidebarMenuSubItem>
-											<SidebarMenuSubButton asChild data-active={location.pathname === '/bookings'}>
-												<Link to='/bookings'>
-													<Plus size={16} />
-													<span className='font-inter'>Novo Agendamento</span>
-												</Link>
-											</SidebarMenuSubButton>
-										</SidebarMenuSubItem>
-										<SidebarMenuSubItem>
-											<SidebarMenuSubButton asChild data-active={location.pathname === '/bookings/list'}>
-												<Link to='/bookings/list'>
-													<List size={16} />
-													<span className='font-inter'>Lista de Agendamentos</span>
-												</Link>
-											</SidebarMenuSubButton>
-										</SidebarMenuSubItem>
-									</SidebarMenuSub>
-								</CollapsibleContent>
-							</SidebarMenuItem>
-						</Collapsible> */}
 
 						<SidebarMenuItem>
 							<SidebarMenuButton asChild tooltip='Veículos' data-active={location.pathname === '/vehicles'}>
@@ -197,7 +160,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 					</SidebarMenu>
 				</SidebarGroup>
 
-				<SidebarGroup className='group-data-[collapsible=icon]:hidden'>
+				{/* <SidebarGroup className='group-data-[collapsible=icon]:hidden'>
 					<SidebarGroupLabel>Financeiro</SidebarGroupLabel>
 					<SidebarMenu>
 						<SidebarMenuItem>
@@ -225,7 +188,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 					</SidebarMenu>
-				</SidebarGroup>
+				</SidebarGroup> */}
 			</SidebarContent>
       		
 			<SidebarFooter>

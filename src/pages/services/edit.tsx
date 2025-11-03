@@ -15,7 +15,7 @@ import { Header } from '@/components/header'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { servicesService, type ServiceResponse } from './service'
 
-// Schema de validação para serviços
+
 const serviceSchema = z.object({
 	name: z.string()
 		.min(1, 'Nome é obrigatório')
@@ -63,7 +63,6 @@ export function ServicesEdit() {
 	const [success, setSuccess] = useState(false)
 	const [service, setService] = useState<ServiceResponse | null>(null)
 
-	// Carregar dados do serviço
 	useEffect(() => {
 		const loadService = async () => {
 			if (!id) {
@@ -77,7 +76,6 @@ export function ServicesEdit() {
 				const serviceData = await servicesService.getService(id)
 				setService(serviceData)
 				
-				// Preencher o formulário com os dados do serviço
 				form.reset({
 					name: serviceData.name,
 					price: serviceData.price,
@@ -119,10 +117,7 @@ export function ServicesEdit() {
 			}
 			
 			await servicesService.updateService(id, serviceData)
-			
 			setSuccess(true)
-			
-			// Navegar imediatamente para a lista de serviços
 			nav('/services')
 			
 		} catch (err: any) {
@@ -133,7 +128,6 @@ export function ServicesEdit() {
 		}
 	}
 
-	// Loading inicial
 	if (isLoadingService) {
 		return (
 			<SidebarProvider>
@@ -157,7 +151,6 @@ export function ServicesEdit() {
 		)
 	}
 
-	// Erro no carregamento
 	if (error && !service) {
 		return (
 			<SidebarProvider>

@@ -9,6 +9,7 @@ import { Loader2, MoveLeft, MoveRight } from 'lucide-react'
 import { clientsService } from './service'
 import { useAuth } from '../../contexts/context'
 
+
 export function Clients() {
 	const nav = useNavigate()
 	const { getUserData, isLoggedIn } = useAuth()
@@ -34,18 +35,13 @@ export function Clients() {
 			setLoading(true)
 			setError(null)
 			
-			// Verificar se o usuário está logado
 			if (!isLoggedIn()) {
-				console.error('❌ Clients: Usuário não está logado')
 				nav('/')
 				return
 			}
 			
-			const userData = getUserData()
-			console.log('🔍 Clients: Dados do usuário (do JWT):', userData)
-			
+			const userData = getUserData()			
 			if (!userData.company_id) {
-				console.error('❌ Clients: Company ID não encontrado no JWT')
 				throw new Error(`Company ID não encontrado no JWT. Dados: ${JSON.stringify(userData)}`)
 			}
 			

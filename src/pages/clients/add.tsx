@@ -144,8 +144,6 @@ export function ClientsAdd() {
 									</div>
 								</div>
 
-
-								{/* Feedback Messages */}
 								{error && (
 									<div className='bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-md'>
 										<p className='font-medium'>Erro ao criar cliente:</p>
@@ -155,11 +153,10 @@ export function ClientsAdd() {
 								
 								{success && (
 									<div className='bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-md'>
-										<p className='font-medium'>✅ Cliente criado com sucesso!</p>
+										<p className='font-medium'>Cliente criado com sucesso!</p>
 									</div>
 								)}
 
-								{/* Botões de Ação */}
 								<div className='flex justify-end gap-4 pt-6 border-t'>
 									<Button 
 										type="button" 
@@ -172,7 +169,7 @@ export function ClientsAdd() {
 									<Button 
 										type="submit"
 										disabled={isLoading}
-										className='bg-[#317CE5] hover:bg-[#2563eb] font-inter disabled:opacity-50 disabled:cursor-not-allowed'
+										className='bg-gradient-to-r from-[#8E30F4] to-[#4645F8] hover:from-[#7C2BD9] hover:to-[#3B3FE6] text-white font-inter disabled:opacity-50 disabled:cursor-not-allowed'
 									>
 										{isLoading ? 'Criando...' : 'Adicionar'}
 									</Button>

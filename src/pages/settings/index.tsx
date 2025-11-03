@@ -233,7 +233,7 @@ export function Settings() {
 																const maskedValue = applyPhoneMask(e.target.value)
 																field.onChange(maskedValue)
 															}}
-															className='px-5 font-inter bg-[#F6F6F7] h-[50px] rounded-md border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
+															className='px-5 font-inter bg-[#F9F9F9] h-[50px] rounded-md border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
 														/>
 													</FormControl>
 													<FormMessage />
@@ -257,7 +257,7 @@ export function Settings() {
 																const maskedValue = applyMobileMask(e.target.value)
 																field.onChange(maskedValue)
 															}}
-															className='font-inter bg-[#F6F6F7] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
+															className='font-inter bg-[#F9F9F9] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
 														/>
 													</FormControl>
 													<FormMessage />
@@ -276,7 +276,7 @@ export function Settings() {
 															type="email" 
 															placeholder="contato@empresa.com"
 															{...field}
-															className='font-inter bg-[#F6F6F7] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
+															className='font-inter bg-[#F9F9F9] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
 														/>
 													</FormControl>
 													<FormMessage />
@@ -295,7 +295,7 @@ export function Settings() {
 															type="url" 
 															placeholder="https://www.empresa.com"
 															{...field}
-															className='font-inter bg-[#F6F6F7] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
+															className='font-inter bg-[#F9F9F9] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
 														/>
 													</FormControl>
 													<FormMessage />
@@ -322,7 +322,7 @@ export function Settings() {
 															const maskedValue = applyTimeMask(e.target.value)
 															field.onChange(maskedValue)
 														}}
-														className='font-inter bg-[#F6F6F7] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
+														className='font-inter bg-[#F9F9F9] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
 													/>
 												</FormControl>
 												<FormMessage />
@@ -346,7 +346,7 @@ export function Settings() {
 															const maskedValue = applyTimeMask(e.target.value)
 															field.onChange(maskedValue)
 														}}
-														className='font-inter bg-[#F6F6F7] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
+														className='font-inter bg-[#F9F9F9] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
 													/>
 												</FormControl>
 												<FormMessage />
@@ -372,7 +372,7 @@ export function Settings() {
 															const maskedValue = applyTimeMask(e.target.value)
 															field.onChange(maskedValue)
 														}}
-														className='font-inter bg-[#F6F6F7] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
+														className='font-inter bg-[#F9F9F9] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
 													/>
 												</FormControl>
 												<FormMessage />
@@ -396,7 +396,7 @@ export function Settings() {
 															const maskedValue = applyTimeMask(e.target.value)
 															field.onChange(maskedValue)
 														}}
-														className='font-inter bg-[#F6F6F7] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
+														className='font-inter bg-[#F9F9F9] h-[50px] border-0 focus:ring-0 focus:ring-offset-0 focus:outline-none focus:shadow-none focus:border-transparent' 
 													/>
 												</FormControl>
 												<FormMessage />
@@ -417,7 +417,7 @@ export function Settings() {
 									<Button 
 										type="submit"
 										disabled={isLoading || isCheckingSettings}
-										className='bg-[#317CE5] hover:bg-[#2563eb] font-inter disabled:opacity-50 disabled:cursor-not-allowed'
+										className='bg-gradient-to-r from-[#8E30F4] to-[#4645F8] hover:from-[#7C2BD9] hover:to-[#3B3FE6] text-white font-inter disabled:opacity-50 disabled:cursor-not-allowed'
 									>
 										{isLoading 
 											? 'Salvando...' 

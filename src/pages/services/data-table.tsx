@@ -116,7 +116,6 @@ export function DataTable<TData, TValue>({
 
 	return (
 		<div className='w-full space-y-4'>
-			{/* Seção de Filtros e Botões */}
 			<div>
 				<div className='flex items-center justify-between'>
 					<Input
@@ -134,7 +133,7 @@ export function DataTable<TData, TValue>({
 					/>
 
 					<Link to={addUrl}>
-						<Button className='bg-[#317CE5] hover:bg-[#2563eb] text-white h-[44px] px-6 cursor-pointer text-[14.5px]'>
+						<Button className='bg-gradient-to-r from-[#8E30F4] to-[#4645F8] hover:from-[#7C2BD9] hover:to-[#3B3FE6] text-white h-[44px] px-6 cursor-pointer text-[14.5px]'>
 							<Plus className="h-4 w-4" />
 							<span className='pl-2 pr-4'>Adicionar</span>
 						</Button>
@@ -203,8 +202,6 @@ export function DataTable<TData, TValue>({
 				</TableBody>
 			</Table>
 			</div>
-			
-
 		</div>
 	)
 }

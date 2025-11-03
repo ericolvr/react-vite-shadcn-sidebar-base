@@ -15,7 +15,7 @@ import { useTheme } from '@/contexts/theme-context'
 
 interface BreadcrumbItem {
 	label: string
-	href?: string // Se não tiver href, será a página atual
+	href?: string
 }
 
 interface HeaderProps {
