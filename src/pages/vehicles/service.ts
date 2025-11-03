@@ -45,16 +45,13 @@ export type ApiError = {
 class VehiclesService {
 
 	// Buscar todos os veículos da empresa
-	async getVehicles(page: number = 1, limit: number = 20, companyId?: number): Promise<VehiclesListResponse> {
+	async getVehicles(companyId: number, page: number = 1, limit: number = 20): Promise<VehiclesListResponse> {
 		try {
 			// Converter page para offset (page 1 = offset 0)
 			const offset = (page - 1) * limit
 			
-			// Construir URL com company_id se fornecido
-			let url = `${BASE_URL}/vehicles?limit=${limit}&offset=${offset}`
-			if (companyId) {
-				url += `&company_id=${companyId}`
-			}
+			// Sempre incluir company_id (obrigatório para multi-tenant)
+			const url = `${BASE_URL}/vehicles?company_id=${companyId}&limit=${limit}&offset=${offset}`
 			
 			const response: AxiosResponse<VehiclesListResponse> = await axios.get(url)
 			
@@ -77,10 +74,10 @@ class VehiclesService {
 	}
 
 	// Buscar veículos de um cliente específico
-	async getVehiclesByClient(clientId: string): Promise<VehicleResponse[]> {
+	async getVehiclesByClient(companyId: number, clientId: string): Promise<VehicleResponse[]> {
 		try {
 			const response: AxiosResponse<VehicleResponse[]> = await axios.get(
-				`${BASE_URL}/vehicles/client/${clientId}`
+				`${BASE_URL}/vehicles/client/${clientId}?company_id=${companyId}`
 			)
 			return response.data
 		} catch (error: any) {

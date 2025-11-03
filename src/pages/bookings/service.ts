@@ -51,10 +51,10 @@ export type ApiError = {
 class BookingsService {
 
 	// Buscar todos os serviços ativos da empresa
-	async getServices(): Promise<BookingService[]> {
+	async getServices(companyId: number): Promise<BookingService[]> {
 		try {
 			const response: AxiosResponse<ServicesListResponse> = await axios.get(
-				`${BASE_URL}/services?limit=100&offset=0`
+				`${BASE_URL}/services?company_id=${companyId}&limit=100&offset=0`
 			)
 			
 			// Filtrar apenas serviços ativos

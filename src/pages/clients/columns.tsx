@@ -21,19 +21,35 @@ import {
 } from '@/components/ui/sheet'
 import { type ClientResponse } from './service'
 import { vehiclesService, type VehicleResponse } from '../vehicles/service'
+import { useAuth } from '@/contexts/context'
 
 // Tipo para clientes da API
 export type Client = ClientResponse
 
 // Componente interno para o drawer dos veículos
 const VehiclesDrawer = ({ client }: { client: Client }) => {
+    const { getUserData, isLoggedIn } = useAuth()
     const [vehicles, setVehicles] = useState<VehicleResponse[]>([])
     const [loading, setLoading] = useState(true)
 
     const loadVehicles = async () => {
         try {
             setLoading(true)
-            const clientVehicles = await vehiclesService.getVehiclesByClient(client.id.toString())
+            
+            // Verificar se o usuário está logado
+            if (!isLoggedIn()) {
+                console.error('❌ VehiclesDrawer: Usuário não está logado')
+                return
+            }
+            
+            const userData = getUserData()
+            if (!userData.company_id) {
+                console.error('❌ VehiclesDrawer: Company ID não encontrado no JWT')
+                throw new Error('Company ID não encontrado no JWT')
+            }
+            
+            console.log('📡 VehiclesDrawer: Carregando veículos do cliente:', client.id, 'company_id:', userData.company_id)
+            const clientVehicles = await vehiclesService.getVehiclesByClient(userData.company_id, client.id.toString())
             setVehicles(clientVehicles)
         } catch (error) {
             console.error('Erro ao carregar veículos:', error)

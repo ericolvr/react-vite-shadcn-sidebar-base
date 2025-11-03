@@ -47,13 +47,13 @@ export type ApiError = {
 class ServicesService {
 
 	// Buscar todos os serviços da empresa
-	async getServices(page: number = 1, limit: number = 20): Promise<ServicesListResponse> {
+	async getServices(companyId: number, page: number = 1, limit: number = 20): Promise<ServicesListResponse> {
 		try {
 			// Converter page para offset (page 1 = offset 0)
 			const offset = (page - 1) * limit
 			
 			const response: AxiosResponse<ServicesListResponse> = await axios.get(
-				`${BASE_URL}/services?limit=${limit}&offset=${offset}`
+				`${BASE_URL}/services?company_id=${companyId}&limit=${limit}&offset=${offset}`
 			)
 			
 			// Simular resposta com page para compatibilidade

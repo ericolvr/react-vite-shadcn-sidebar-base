@@ -11,7 +11,7 @@ import { useAuth } from '../../contexts/context'
 
 export function Clients() {
 	const nav = useNavigate()
-	const { user } = useAuth()
+	const { getUserData, isLoggedIn } = useAuth()
 	const [clients, setClients] = useState<Client[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
@@ -34,11 +34,24 @@ export function Clients() {
 			setLoading(true)
 			setError(null)
 			
-			// Obter company_id do contexto de autenticação
-			const companyId = (user as any)?.company_id || 1
+			// Verificar se o usuário está logado
+			if (!isLoggedIn()) {
+				console.error('❌ Clients: Usuário não está logado')
+				nav('/')
+				return
+			}
+			
+			const userData = getUserData()
+			console.log('🔍 Clients: Dados do usuário (do JWT):', userData)
+			
+			if (!userData.company_id) {
+				console.error('❌ Clients: Company ID não encontrado no JWT')
+				throw new Error(`Company ID não encontrado no JWT. Dados: ${JSON.stringify(userData)}`)
+			}
 			
 			const limit = 20
-			const response = await clientsService.getClients(page, limit, companyId)
+			console.log('📡 Clients: Fazendo requisição com company_id do JWT:', userData.company_id)
+			const response = await clientsService.getClients(userData.company_id, page, limit)
 			console.log('📊 Resposta da API:', response)
 			setClients(response.clients)
 			setPagination({

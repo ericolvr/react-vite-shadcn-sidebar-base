@@ -28,6 +28,35 @@ export type Booking = {
     notes?: string
 }
 
+// Tipo para configurações da empresa
+export type CompanySettingsResponse = {
+    id: number
+    company_id: number
+    start_work_weekday: string    // "08:00:00"
+    end_work_weekday: string      // "18:00:00"
+    start_work_weekend: string    // "08:00:00"
+    end_work_weekend: string      // "17:00:00"
+    site: string
+    email: string
+    phone: string
+}
+
+// Tipos para Schedule API
+export type ScheduleSlot = {
+    start_time: string    // "2025-11-03T08:00:00Z"
+    end_time: string      // "2025-11-03T08:30:00Z"
+    available: boolean
+    booking_id?: number   // ID do booking (quando ocupado)
+    client_name?: string  // Nome do cliente (quando ocupado)
+    service_names?: string[] // Lista de serviços (quando ocupado)
+}
+
+export type ScheduleResponse = {
+    date: string          // "2025-11-03T00:00:00Z"
+    company_id: number
+    schedule: ScheduleSlot[]
+}
+
 export type CompanySettings = {
     id: number
     company_id: number
@@ -70,6 +99,7 @@ class BookingsListService {
 
     // Buscar todos os agendamentos com filtros
     async getBookings(
+        companyId: number,
         page: number = 1, 
         limit: number = 20,
         search?: string,
@@ -78,7 +108,7 @@ class BookingsListService {
     ): Promise<BookingsListResponse> {
         try {
             const params = new URLSearchParams({
-                company_id: '1',
+                company_id: companyId.toString(),
                 page: page.toString(),
                 limit: limit.toString()
             })
@@ -238,7 +268,7 @@ class BookingsListService {
             )
             
             // Log para debug
-            console.log(' Resposta da API slots:', response.data)
+            console.log('🕐 Resposta da API slots:', response.data)
             
             // Extrair slots da resposta (pode ser array direto ou dentro de propriedade)
             let slots = response.data.available_slots || response.data || []
@@ -252,6 +282,30 @@ class BookingsListService {
         } catch (error: any) {
             const apiError: ApiError = {
                 message: error.response?.data?.message || 'Erro ao buscar slots disponíveis',
+                status: error.response?.status || 500,
+                details: error.response?.data
+            }
+            throw apiError
+        }
+    }
+
+    // Buscar schedule completo do dia
+    async getSchedule(companyId: number, date: string): Promise<ScheduleResponse> {
+        try {
+            console.log(`📅 Buscando schedule para company_id: ${companyId}, date: ${date}`)
+            const response: AxiosResponse<ScheduleResponse> = await axios.get(
+                `${BASE_URL}/availability/schedule?company_id=${companyId}&date=${date}`
+            )
+            
+            console.log('📊 Resposta da API schedule:', response.data)
+            console.log(`🕐 Total de slots encontrados: ${response.data.schedule.length}`)
+            console.log(`✅ Slots disponíveis: ${response.data.schedule.filter(slot => slot.available).length}`)
+            
+            return response.data
+        } catch (error: any) {
+            console.error('❌ Erro ao buscar schedule:', error)
+            const apiError: ApiError = {
+                message: error.response?.data?.message || 'Erro ao buscar schedule',
                 status: error.response?.status || 500,
                 details: error.response?.data
             }
@@ -399,6 +453,19 @@ class BookingsListService {
             total: filteredBookings.length,
             page,
             limit
+        }
+    }
+
+    // Buscar configurações da empresa
+    async getCompanySettings(companyId: number): Promise<CompanySettingsResponse> {
+        try {
+            const response: AxiosResponse<CompanySettingsResponse> = await axios.get(
+                `${BASE_URL}/companies/${companyId}/settings`
+            )
+            return response.data
+        } catch (error: any) {
+            console.error('Erro ao buscar configurações da empresa:', error)
+            throw new Error(error.response?.data?.message || 'Erro ao buscar configurações da empresa')
         }
     }
 

@@ -139,7 +139,54 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     // Função para obter dados específicos do usuário
+    // Função para decodificar JWT de forma segura
+    const decodeJWT = (token: string) => {
+        try {
+            // Dividir o token em partes
+            const parts = token.split('.')
+            if (parts.length !== 3) return null
+            
+            // Decodificar o payload (parte do meio)
+            const payload = parts[1]
+            // Adicionar padding se necessário
+            const paddedPayload = payload + '='.repeat((4 - payload.length % 4) % 4)
+            const decoded = atob(paddedPayload)
+            return JSON.parse(decoded)
+        } catch (error) {
+            console.error('Erro ao decodificar JWT:', error)
+            return null
+        }
+    }
+
     const getUserData = () => {
+        console.log('🔍 getUserData: authState:', authState)
+        
+        // Se temos um token, extrair dados dele (mais seguro)
+        if (authState.token) {
+            console.log('🔍 getUserData: Token encontrado, decodificando...')
+            const jwtPayload = decodeJWT(authState.token)
+            console.log('🔍 getUserData: JWT payload:', jwtPayload)
+            
+            if (jwtPayload) {
+                const userData = {
+                    id: jwtPayload.user_id || authState.user?.id || null,
+                    company_id: jwtPayload.company_id || null, // Sempre do JWT
+                    name: authState.user?.name || '',
+                    mobile: authState.user?.mobile || '',
+                    role: jwtPayload.role || authState.user?.role || '',
+                    isAuthenticated: authState.isAuthenticated,
+                    token: authState.token
+                }
+                console.log('🔍 getUserData: Dados finais:', userData)
+                return userData
+            } else {
+                console.error('❌ getUserData: Erro ao decodificar JWT')
+            }
+        } else {
+            console.warn('⚠️ getUserData: Nenhum token encontrado')
+        }
+        
+        // Fallback para dados do estado (compatibilidade)
         return {
             id: authState.user?.id || null,
             company_id: authState.user?.company_id || null,
@@ -153,7 +200,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     // Função para verificar se está logado
     const isLoggedIn = (): boolean => {
-        return authState.isAuthenticated && !!authState.token
+        console.log('🔍 isLoggedIn: Verificando estado de login...')
+        console.log('🔍 isLoggedIn: authState.isAuthenticated:', authState.isAuthenticated)
+        console.log('🔍 isLoggedIn: authState.token:', authState.token ? 'Presente' : 'Ausente')
+        
+        const isAuthenticated = authState.isAuthenticated && !!authState.token
+        console.log('🔍 isLoggedIn: Resultado final:', isAuthenticated)
+        
+        return isAuthenticated
     }
 
     // Valor do contexto

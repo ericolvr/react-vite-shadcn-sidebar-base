@@ -1,577 +1,1227 @@
-
+import React, { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { AppSidebar } from '@/components/app-sidebar'
 import { Header } from '@/components/header'
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar'
 import { Button } from '@/components/ui/button'
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { useState, useEffect } from 'react'
-import { Loader2 } from 'lucide-react'
-import { bookingsService, type BookingService, type CompanySettings } from './service'
+import { Badge } from '@/components/ui/badge'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible'
+import { 
+    Calendar, 
+    CalendarClock,
+    ChevronDown,
+    ChevronUp,
+    Clock, 
+    User, 
+    Car, 
+    Phone, 
+    MapPin,
+    Search,
+    Filter,
+    Plus,
+    Loader2,
+    Eye,
+    Edit,
+    Trash2
+} from 'lucide-react'
+import { servicesService, type ServiceResponse } from '../services/service'
+import { bookingsListService, type CreateBookingRequest, type ScheduleResponse, type ScheduleSlot } from './list-service'
+import CustomerSelector from './components/customer_selector'
+import { type Vehicle } from './components/vehicle-service'
+import { useAuth } from '@/contexts/context'
 
-interface TimeSlot {
-	id: string
-	time: string
-	available: boolean
+type BookingStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'reserved'
+
+type TimeSlot = {
+    time: string
+    booking?: Booking
+    isStart?: boolean  // Se é o início do serviço
+    isContinuation?: boolean  // Se é continuação do serviço
 }
-
-interface DayData {
-	date: Date
-	dayName: string
-	dayNumber: number
-	timeSlots: TimeSlot[]
-}
-
-// Usando o tipo da API
-type Service = BookingService
-
-type ServiceStatus = 'agendado' | 'aspirando' | 'lavando' | 'secando' | 'finalizado'
-
-interface BookingWithStatus {
-	time: string
-	service: Service
-	date: Date
-	status: ServiceStatus
-}
-
-// Services serão carregados da API
-
-const PLATE = 'ABC 1234'
 
 export function Bookings() {
-	const [selectedDate, setSelectedDate] = useState<Date>(new Date())
-	const [selectedTime, setSelectedTime] = useState<string | null>(null)
-	const [selectedService, setSelectedService] = useState<Service | null>(null)
-	const [errorMessage, setErrorMessage] = useState<string | null>(null)
-	const [confirmedBooking, setConfirmedBooking] = useState<BookingWithStatus | null>(null)
-	const [showCancelModal, setShowCancelModal] = useState<boolean>(false)
-	
-	// Estados para API
-	const [services, setServices] = useState<Service[]>([])
-	const [loadingServices, setLoadingServices] = useState(true)
-	const [servicesError, setServicesError] = useState<string | null>(null)
-	
-	// Estados para configurações da empresa
-	const [companySettings, setCompanySettings] = useState<CompanySettings | null>(null)
-	const [loadingSettings, setLoadingSettings] = useState(true)
-	const [settingsError, setSettingsError] = useState<string | null>(null)
+    const navigate = useNavigate()
+    const { getUserData, isLoggedIn, isLoading: authLoading } = useAuth()
+    const [bookings, setBookings] = useState<Booking[]>([])
+    const [companySettings, setCompanySettings] = useState<CompanySettingsResponse | null>(null)
+    const [timeSlots, setTimeSlots] = useState<TimeSlot[]>([])
+    const [schedule, setSchedule] = useState<ScheduleSlot[]>([])
+    const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
+    const [selectedDate, setSelectedDate] = useState<Date>(new Date())
+    const [isNewBookingModalOpen, setIsNewBookingModalOpen] = useState(false)
+    const [services, setServices] = useState<ServiceResponse[]>([])
+    const [selectedService, setSelectedService] = useState<string>('')
+    const [selectedTimeSlot, setSelectedTimeSlot] = useState<string>('')
+    const [availableSlots, setAvailableSlots] = useState<string[]>([])
+    const [loadingSlots, setLoadingSlots] = useState(false)
+    const [isScheduleOpen, setIsScheduleOpen] = useState(true)
+    const [modalSelectedDate, setModalSelectedDate] = useState<Date>(() => {
+        // Garantir que a data inicial seja sempre hoje ou futura
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        return today
+    })
+    const [selectedVehicle, setSelectedVehicle] = useState<Vehicle | null>(null)
+    const [pagination, setPagination] = useState({
+        page: 1,
+        limit: 20,
+        total: 0,
+        totalPages: 0
+    })
 
-	// Carregar serviços da API
-	useEffect(() => {
-		const loadServices = async () => {
-			try {
-				setLoadingServices(true)
-				setServicesError(null)
-				const servicesData = await bookingsService.getServices()
-				setServices(servicesData)
-				
-				// Selecionar o primeiro serviço por padrão
-				if (servicesData.length > 0) {
-					setSelectedService(servicesData[0])
-				}
-			} catch (error: any) {
-				console.error('Erro ao carregar serviços:', error)
-				setServicesError(error.message || 'Erro ao carregar serviços')
-			} finally {
-				setLoadingServices(false)
-			}
-		}
+    // Gerar próximos 7 dias
+    const generateWeekDays = (): Date[] => {
+        const days: Date[] = []
+        const today = new Date()
+        
+        for (let i = 0; i < 7; i++) {
+            const date = new Date(today)
+            date.setDate(today.getDate() + i)
+            days.push(date)
+        }
+        
+        return days
+    }
 
-		loadServices()
-	}, [])
+    // Buscar configurações da empresa e schedule do dia
+    const loadSchedule = async (date: Date) => {
+        try {
+            setLoading(true)
+            
+            // Verificar se o usuário está logado
+            if (!isLoggedIn()) {
+                console.error('❌ Bookings: Usuário não está logado')
+                return
+            }
+            
+            const userData = getUserData()
+            if (!userData.company_id) {
+                console.error('❌ Bookings: Company ID não encontrado')
+                return
+            }
+            
+            // Formatar data para API (YYYY-MM-DD)
+            const dateString = date.toISOString().split('T')[0]
+            
+            console.log(`📅 Bookings: Carregando dados para ${dateString}`)
+            
+            // Buscar configurações da empresa, schedule e bookings em paralelo
+            const [companySettings, scheduleData, bookingsData] = await Promise.all([
+                bookingsListService.getCompanySettings(userData.company_id),
+                bookingsListService.getSchedule(userData.company_id, dateString),
+                bookingsListService.getBookings(userData.company_id, 1, 100, undefined, undefined, dateString)
+            ])
+            
+            console.log('⚙️ Bookings: Configurações da empresa:', companySettings)
+            console.log('📊 Bookings: Schedule carregado:', scheduleData)
+            console.log('📋 Bookings: Agendamentos carregados:', bookingsData)
+            
+            setCompanySettings(companySettings)
+            setSchedule(scheduleData.schedule)
+            setBookings(bookingsData.bookings)
+            
+            // Gerar slots baseados nas configurações da empresa
+            const allSlots = generateSlotsFromSettings(companySettings, date)
+            
+            // Mapear com dados do schedule e bookings completos
+            const slotsWithAvailability = mapSlotsWithSchedule(allSlots, scheduleData.schedule, bookingsData.bookings)
+            console.log('🎯 setTimeSlots chamado com:', slotsWithAvailability.length, 'slots')
+            setTimeSlots(slotsWithAvailability)
+            
+        } catch (error) {
+            console.error('❌ Erro ao carregar schedule:', error)
+            setError('Erro ao carregar horários')
+        } finally {
+            setLoading(false)
+        }
+    }
 
-	// Carregar configurações da empresa
-	useEffect(() => {
-		const loadCompanySettings = async () => {
-			try {
-				setLoadingSettings(true)
-				setSettingsError(null)
-				// Usando empresa ID 3 como especificado
-				const settings = await bookingsService.getCompanySettings(3)
-				console.log('Configurações da empresa carregadas:', settings)
-				setCompanySettings(settings)
-			} catch (error: any) {
-				console.error('Erro ao carregar configurações da empresa:', error)
-				setSettingsError(error.message || 'Erro ao carregar configurações da empresa')
-			} finally {
-				setLoadingSettings(false)
-			}
-		}
+    // Gerar slots baseados nas configurações da empresa
+    const generateSlotsFromSettings = (settings: any, date: Date): string[] => {
+        console.log('🏗️ generateSlotsFromSettings chamada com:', { settings, date })
+        
+        const slots: string[] = []
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6 // 0 = Domingo, 6 = Sábado
+        
+        console.log('📅 É fim de semana?', isWeekend)
+        
+        // Usar configurações da empresa
+        let startTime: string
+        let endTime: string
+        
+        if (settings) {
+            console.log('⚙️ Usando configurações da empresa:', settings)
+            if (isWeekend) {
+                // Converter "08:00:00" para "08:00"
+                startTime = settings.start_work_weekend?.substring(0, 5) || '08:00'
+                endTime = settings.end_work_weekend?.substring(0, 5) || '17:00'
+            } else {
+                // Converter "08:00:00" para "08:00"
+                startTime = settings.start_work_weekday?.substring(0, 5) || '08:00'
+                endTime = settings.end_work_weekday?.substring(0, 5) || '18:00'
+            }
+        } else {
+            console.log('⚠️ Usando horários padrão (sem configurações)')
+            // Horários padrão se não tiver configurações
+            startTime = isWeekend ? '08:00' : '08:00'
+            endTime = isWeekend ? '17:00' : '18:00'
+        }
+        
+        console.log('🕐 Horários definidos:', { startTime, endTime })
+        
+        // Gerar slots de 30 minutos (conforme API)
+        const slotDuration = 30
+        
+        const [startHour, startMinute] = startTime.split(':').map(Number)
+        const [endHour, endMinute] = endTime.split(':').map(Number)
+        
+        const startTotalMinutes = startHour * 60 + startMinute
+        const endTotalMinutes = endHour * 60 + endMinute
+        
+        for (let minutes = startTotalMinutes; minutes < endTotalMinutes; minutes += slotDuration) {
+            const hour = Math.floor(minutes / 60)
+            const minute = minutes % 60
+            const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+            slots.push(timeString)
+        }
+        
+        console.log(`🕐 Slots gerados para ${isWeekend ? 'fim de semana' : 'dia de semana'} (${startTime} - ${endTime}):`, slots.length, 'slots')
+        console.log('📋 Lista de slots:', slots)
+        return slots
+    }
 
-		loadCompanySettings()
-	}, [])
+    // Mapear slots gerados com dados do schedule da API e bookings completos
+    const mapSlotsWithSchedule = (generatedSlots: string[], scheduleSlots: ScheduleSlot[], fullBookings: any[] = []): TimeSlot[] => {
+        console.log('🔗 mapSlotsWithSchedule chamada com:', { 
+            generatedSlotsCount: generatedSlots.length, 
+            scheduleSlotsCount: scheduleSlots.length,
+            fullBookingsCount: fullBookings.length
+        })
+        console.log('📋 Generated slots:', generatedSlots)
+        console.log('📋 Schedule slots:', scheduleSlots)
+        console.log('📋 Full bookings:', fullBookings)
+        
+        const mappedSlots = generatedSlots.map(timeSlot => {
+            // Procurar slot correspondente no schedule da API
+            const scheduleSlot = scheduleSlots.find(apiSlot => {
+                const apiTime = new Date(apiSlot.start_time).toLocaleTimeString('pt-BR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    timeZone: 'America/Sao_Paulo'
+                })
+                return apiTime === timeSlot
+            })
+            
+            // Criar objeto de booking se o slot estiver ocupado
+            let booking = undefined
+            if (scheduleSlot && !scheduleSlot.available && scheduleSlot.booking_id) {
+                // Procurar dados completos do booking na API /bookings
+                const fullBooking = fullBookings.find(b => b.id === scheduleSlot.booking_id)
+                
+                if (fullBooking) {
+                    // Usar dados completos da API /bookings
+                    booking = {
+                        id: fullBooking.id,
+                        vehicle_plate: fullBooking.vehicle_plate,
+                        services: fullBooking.services || [],
+                        status: fullBooking.status as BookingStatus,
+                        client_name: fullBooking.client_name,
+                        client_phone: fullBooking.client_phone,
+                        scheduled_at: fullBooking.scheduled_at,
+                        notes: fullBooking.notes,
+                        service_names: fullBooking.services?.map((s: any) => s.name) || []
+                    }
+                } else {
+                    // Fallback para dados do schedule se não encontrar na API /bookings
+                    booking = {
+                        id: scheduleSlot.booking_id,
+                        vehicle_plate: 'N/A',
+                        services: scheduleSlot.service_names?.map(name => ({ name })) || [],
+                        status: 'confirmed' as BookingStatus,
+                        client_name: scheduleSlot.client_name || 'Cliente não encontrado',
+                        service_names: scheduleSlot.service_names || []
+                    }
+                }
+            }
 
-	// Gerar próximos 7 dias
-	const generateDays = (): DayData[] => {
-		const days: DayData[] = []
-		const today = new Date()
-		
-		for (let i = 0; i < 7; i++) {
-			const date = new Date(today)
-			date.setDate(today.getDate() + i)
-			
-			const dayNames = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
-			
-			days.push({
-				date,
-				dayName: dayNames[date.getDay()],
-				dayNumber: date.getDate(),
-				timeSlots: generateTimeSlots(date)
-			})
-		}
-		
-		return days
-	}
+            return {
+                time: timeSlot,
+                booking: booking,
+                isStart: false,
+                isContinuation: false,
+                available: scheduleSlot?.available ?? true // Disponível por padrão se não encontrar na API
+            } as TimeSlot & { available: boolean }
+        })
+        
+        console.log('✅ Slots mapeados:', mappedSlots.length, mappedSlots)
+        return mappedSlots
+    }
 
-	// Gerar horários disponíveis baseado nas configurações da empresa
-	const generateTimeSlots = (date: Date): TimeSlot[] => {
-		const slots: TimeSlot[] = []
-		
-		// Se não temos configurações ainda, retorna array vazio
-		if (!companySettings) {
-			return slots
-		}
-		
-		// Determinar se é fim de semana (sábado = 6, domingo = 0)
-		const isWeekend = date.getDay() === 0 || date.getDay() === 6
-		
-		// Usar horários baseados no tipo de dia com fallbacks
-		const startTime = isWeekend 
-			? (companySettings.weekend_start || '09:00') 
-			: (companySettings.weekday_start || '08:00')
-		const endTime = isWeekend 
-			? (companySettings.weekend_end || '17:00') 
-			: (companySettings.weekday_end || '18:00')
-		
-		// Validar se os horários existem
-		if (!startTime || !endTime) {
-			console.warn('Horários de funcionamento não configurados:', { startTime, endTime, isWeekend })
-			return slots
-		}
-		
-		// Converter strings de tempo para horas e minutos
-		const [startHour, startMinute] = startTime.split(':').map(Number)
-		const [endHour, endMinute] = endTime.split(':').map(Number)
-		
-		// Validar se os valores são números válidos
-		if (isNaN(startHour) || isNaN(startMinute) || isNaN(endHour) || isNaN(endMinute)) {
-			console.warn('Formato de horário inválido:', { startTime, endTime })
-			return slots
-		}
-		
-		// Usar duração do slot das configurações (padrão 15 minutos se não definido)
-		const slotDuration = companySettings.slot_duration || 15
-		
-		// Calcular total de minutos para início e fim
-		const startTotalMinutes = startHour * 60 + startMinute
-		const endTotalMinutes = endHour * 60 + endMinute
-		
-		// Gerar slots baseado na duração configurada
-		for (let minutes = startTotalMinutes; minutes < endTotalMinutes; minutes += slotDuration) {
-			const hour = Math.floor(minutes / 60)
-			const minute = minutes % 60
-			const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
-			
-			slots.push({
-				id: `${hour}-${minute}`,
-				time: timeString,
-				available: Math.random() > 0.3 // 70% dos horários disponíveis (simulação)
-			})
-		}
-		
-		return slots
-	}
+    // Gerar slots de tempo baseado nas configurações da empresa e data selecionada
+    const generateTimeSlots = (settings: CompanySettingsResponse | null, date: Date): string[] => {
+        const slots: string[] = []
+        const isWeekend = date.getDay() === 0 || date.getDay() === 6 // 0 = Domingo, 6 = Sábado
+        
+        // Usar horários padrão se não tiver configurações
+        const startTime = isWeekend ? '09:00' : '08:00'
+        const endTime = isWeekend ? '17:00' : '18:00'
+        const slotDuration = 15 // 15 minutos por slot
+        
+        const [startHour, startMinute] = startTime.split(':').map(Number)
+        const [endHour, endMinute] = endTime.split(':').map(Number)
+        
+        const startTotalMinutes = startHour * 60 + startMinute
+        const endTotalMinutes = endHour * 60 + endMinute
+        
+        for (let minutes = startTotalMinutes; minutes < endTotalMinutes; minutes += slotDuration) {
+            const hour = Math.floor(minutes / 60)
+            const minute = minutes % 60
+            const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
+            slots.push(timeString)
+        }
+        
+        return slots
+    }
 
-	const days = generateDays()
+    // Converter horário string para minutos
+    const timeToMinutes = (timeString: string): number => {
+        const [hours, minutes] = timeString.split(':').map(Number)
+        return hours * 60 + minutes
+    }
 
-	const formatDate = (date: Date) => {
-		const months = [
-			'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
-			'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
-		]
-		
-		return `${months[date.getMonth()]} ${date.getFullYear()}`
-	}
+    // Converter minutos para horário string
+    const minutesToTime = (minutes: number): string => {
+        const hours = Math.floor(minutes / 60)
+        const mins = minutes % 60
+        return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
+    }
 
-	const isToday = (date: Date) => {
-		const today = new Date()
-		return date.toDateString() === today.toDateString()
-	}
+    // Mapear bookings para slots de tempo (considerando duração)
+    const mapBookingsToTimeSlots = (bookings: Booking[], timeSlots: string[]): TimeSlot[] => {
+        return timeSlots.map(time => {
+            // Encontrar booking que ocupa este horário (início ou durante o serviço)
+            const booking = bookings.find(b => {
+                const bookingDateTime = b.started_at || b.scheduled_at
+                if (!bookingDateTime) return false
 
-	const isSameDay = (date1: Date, date2: Date) => {
-		return date1.toDateString() === date2.toDateString()
-	}
+                // Extrair horário diretamente da string sem conversão de timezone
+                const bookingTime = bookingDateTime.includes('T') 
+                    ? bookingDateTime.split('T')[1].substring(0, 5) // "12:00" de "2025-10-28T12:00:00Z"
+                    : bookingDateTime.substring(11, 16) // "12:00" de "2025-10-28 12:00:00"
+                
+                // Calcular duração total dos serviços
+                const totalDuration = b.services.reduce((total: number, service: any) => total + service.duration, 0)
+                
+                // Converter horários para minutos para facilitar cálculos
+                const slotMinutes = timeToMinutes(time)
+                const bookingStartMinutes = timeToMinutes(bookingTime)
+                const bookingEndMinutes = bookingStartMinutes + totalDuration
 
-	const selectedDayData = days.find(day => isSameDay(day.date, selectedDate))
+                // Verificar se o slot atual está dentro do período do booking
+                const isOccupied = slotMinutes >= bookingStartMinutes && slotMinutes < bookingEndMinutes
 
-	// Função para calcular o próximo horário baseado na duração do serviço
-	const getNextTimeSlot = (currentTime: string): string => {
-		if (!selectedService) return currentTime
-		const [hours, minutes] = currentTime.split(':').map(Number)
-		const totalMinutes = hours * 60 + minutes + selectedService.duration
-		const nextHours = Math.floor(totalMinutes / 60)
-		const nextMinutes = totalMinutes % 60
-		return `${nextHours.toString().padStart(2, '0')}:${nextMinutes.toString().padStart(2, '0')}`
-	}
+                return isOccupied
+            })
+            
+            // Determinar se é início ou continuação
+            let isStart = false
+            let isContinuation = false
 
-	// Função para verificar se há slots consecutivos disponíveis para o serviço
-	const canScheduleService = (startTime: string, dayData: DayData): boolean => {
-		if (!selectedService) return false
-		const [startHours, startMinutes] = startTime.split(':').map(Number)
-		const startTotalMinutes = startHours * 60 + startMinutes
-		const endTotalMinutes = startTotalMinutes + selectedService.duration
-		
-		// Verifica se todos os slots necessários estão disponíveis
-		for (let minutes = startTotalMinutes; minutes < endTotalMinutes; minutes += 15) {
-			const hours = Math.floor(minutes / 60)
-			const mins = minutes % 60
-			const timeString = `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`
-			
-			const slot = dayData.timeSlots.find(s => s.time === timeString)
-			if (!slot || !slot.available) {
-				return false
-			}
-		}
-		
-		return true
-	}
+            if (booking) {
+                const bookingDateTime = booking.started_at || booking.scheduled_at!
+                // Usar a mesma lógica de extração de horário
+                const bookingTime = bookingDateTime.includes('T') 
+                    ? bookingDateTime.split('T')[1].substring(0, 5) // "12:00" de "2025-10-28T12:00:00Z"
+                    : bookingDateTime.substring(11, 16) // "12:00" de "2025-10-28 12:00:00"
+                
+                isStart = time === bookingTime
+                isContinuation = time !== bookingTime
+            }
 
-	// Função para verificar se um horário está bloqueado pelo horário selecionado
-	const isTimeSlotBlocked = (slotTime: string): boolean => {
-		if (!selectedTime || !selectedService) return false
-		
-		const [selectedHours, selectedMinutes] = selectedTime.split(':').map(Number)
-		const [slotHours, slotMinutes] = slotTime.split(':').map(Number)
-		
-		const selectedTotalMinutes = selectedHours * 60 + selectedMinutes
-		const slotTotalMinutes = slotHours * 60 + slotMinutes
-		const endTotalMinutes = selectedTotalMinutes + selectedService.duration
-		
-		// Verifica se o horário está dentro do período de duração do serviço (excluindo o horário inicial)
-		// Para 45min: 08:00 selecionado deve bloquear 08:15, 08:30, 08:45 (incluindo horário de término)
-		return slotTotalMinutes > selectedTotalMinutes && 
-			   slotTotalMinutes <= endTotalMinutes
-	}
+            return {
+                time,
+                booking,
+                isStart,
+                isContinuation
+            }
+        })
+    }
 
-	// Função para verificar se um horário faz parte de um agendamento confirmado
-	const isPartOfConfirmedRange = (slotTime: string, booking: BookingWithStatus): boolean => {
-		const [bookingHours, bookingMinutes] = booking.time.split(':').map(Number)
-		const [slotHours, slotMinutes] = slotTime.split(':').map(Number)
-		
-		const bookingTotalMinutes = bookingHours * 60 + bookingMinutes
-		const slotTotalMinutes = slotHours * 60 + slotMinutes
-		const endTotalMinutes = bookingTotalMinutes + booking.service.duration
-		
-		return slotTotalMinutes >= bookingTotalMinutes && 
-			   slotTotalMinutes <= endTotalMinutes
-	}
+    const loadData = async (isRefresh = false) => {
+        try {
+            // Só mostrar loading na primeira carga, não no refresh automático
+            if (!isRefresh) {
+                setLoading(true)
+            }
+            setError(null)
+            
+            // Gerar slots de tempo para a data selecionada (sem depender de configurações)
+            const slots = generateTimeSlots(null, selectedDate)
+            
+            // Formatar data selecionada para API (YYYY-MM-DD)
+            const dateString = selectedDate.toISOString().split('T')[0]
+            
+            // Verificar se o usuário está logado
+            if (!isLoggedIn()) {
+                console.error('Bookings: Usuário não está logado')
+                return
+            }
+            
+            const userData = getUserData()
+            if (!userData.company_id) {
+                throw new Error('Company ID não encontrado')
+            }
+            
+            // Carregar bookings filtrados por data
+            const response = await bookingsListService.getBookings(
+                userData.company_id,
+                pagination.page, 
+                pagination.limit,
+                undefined, // search
+                undefined, // status
+                dateString // date
+            )
+            
+            console.log('📊 BookingsList: Resposta da API:', response)
+            
+            // Verificar se a resposta tem a estrutura esperada
+            if (!response || !response.bookings || !Array.isArray(response.bookings)) {
+                console.warn('⚠️ BookingsList: Resposta da API inválida:', response)
+                setBookings([])
+                setTimeSlots(slots)
+                return
+            }
+            
+            // FILTRO: Manter apenas agendamentos da data selecionada
+            const bookingsForSelectedDate = response.bookings.filter((booking: any) => {
+                const bookingDateTime = booking.scheduled_at || booking.started_at
+                if (!bookingDateTime) return false
+                
+                // Extrair apenas a data (YYYY-MM-DD)
+                const bookingDate = bookingDateTime.split('T')[0]
+                return bookingDate === dateString
+            })
+            
+            setBookings(bookingsForSelectedDate)
+            setPagination(prev => ({
+                ...prev,
+                total: bookingsForSelectedDate.length,
+                totalPages: Math.ceil(bookingsForSelectedDate.length / response.limit)
+            }))
+            
+            // Mapear bookings filtrados para slots de tempo
+            const timeSlotsWithBookings = mapBookingsToTimeSlots(bookingsForSelectedDate, slots)
+            setTimeSlots(timeSlotsWithBookings)
+            
+        } catch (err: any) {
+            console.error('Erro ao carregar dados:', err)
+            setError(err.message || 'Erro ao carregar dados')
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    // Carregar serviços
+    const loadServices = async () => {
+        try {
+            // Verificar se o usuário está logado
+            if (!isLoggedIn()) {
+                console.error('❌ BookingsList: Usuário não está logado')
+                return
+            }
+            
+            const userData = getUserData()
+            if (!userData.company_id) {
+                throw new Error('Company ID não encontrado')
+            }
+            
+            console.log('📡 Bookings: Fazendo chamada para servicesService.getServices com company_id:', userData.company_id)
+            const response = await servicesService.getServices(userData.company_id, 100) // Buscar todos os serviços
+            console.log('📊 Bookings: Resposta completa da API:', response)
+            console.log('📊 Bookings: Total de serviços recebidos:', response.services?.length || 0)
+            
+            const activeServices = response.services.filter(service => service.active)
+            console.log('📊 Bookings: Serviços ativos filtrados:', activeServices.length)
+            console.log('📊 Bookings: Lista de serviços ativos:', activeServices)
+            
+            setServices(activeServices)
+        } catch (error) {
+            console.error('Erro ao carregar serviços:', error)
+        }
+    }
+
+    // Buscar slots disponíveis para o serviço selecionado
+    const loadAvailableSlots = useCallback(async (serviceId: string) => {
+        if (!serviceId || !isNewBookingModalOpen) {
+            setAvailableSlots([])
+            return
+        }
+
+        try {
+            // Não mostrar loading para mudanças de data para evitar piscar
+            const dateString = modalSelectedDate.toISOString().split('T')[0]
+            const companyId = 1 // ID da empresa
+            const serviceIds = [parseInt(serviceId)]
+            
+            const slots = await bookingsListService.getAvailableSlots(companyId, dateString, serviceIds)
+            setAvailableSlots(slots)
+            
+            console.log(`🎯 Slots disponíveis para serviço ${serviceId} em ${dateString}:`, slots)
+        } catch (error) {
+            console.error('Erro ao carregar slots disponíveis:', error)
+            setAvailableSlots([])
+        } finally {
+            setLoadingSlots(false)
+        }
+    }, [modalSelectedDate, isNewBookingModalOpen])
+
+    // Lidar com mudança de serviço
+    const handleServiceChange = (serviceId: string) => {
+        setSelectedService(serviceId)
+        setSelectedTimeSlot('') // Limpar horário selecionado
+        setLoadingSlots(true) // Mostrar loading apenas para mudança de serviço
+        loadAvailableSlots(serviceId) // Buscar slots disponíveis
+    }
+
+    // Calcular quais slots serão ocupados pelo serviço
+    const getOccupiedSlots = (startTime: string, serviceDuration: number): string[] => {
+        if (!startTime) return []
+        
+        const occupiedSlots: string[] = []
+        
+        // Extrair horário limpo (08:00)
+        const cleanStartTime = startTime.includes('T') ? startTime.split('T')[1].substring(0, 5) : startTime
+        const [hours, minutes] = cleanStartTime.split(':').map(Number)
+        let totalMinutes = hours * 60 + minutes
+        
+        // Calcular quantos slots de 30min são necessários
+        // Para 90min: de 08:00 até 09:30 = 4 slots (08:00, 08:30, 09:00, 09:30)
+        // Sempre incluir o slot onde o serviço termina
+        const slotsNeeded = Math.floor(serviceDuration / 30) + 1
+        
+        // Gerar slots ocupados de 30 em 30 minutos
+        for (let i = 0; i < slotsNeeded; i++) {
+            const slotHours = Math.floor(totalMinutes / 60)
+            const slotMinutes = totalMinutes % 60
+            const slotTime = `${slotHours.toString().padStart(2, '0')}:${slotMinutes.toString().padStart(2, '0')}`
+            occupiedSlots.push(slotTime)
+            totalMinutes += 30 // Incrementar de 30 em 30 minutos
+        }
+        
+        console.log(`🎯 Serviço ${serviceDuration}min iniciando em ${cleanStartTime} ocupará slots:`, occupiedSlots)
+        return occupiedSlots
+    }
+
+    // Verificar se um slot será ocupado pelo serviço selecionado
+    const isSlotOccupied = (slot: string): boolean => {
+        if (!selectedTimeSlot || !selectedService) return false
+        
+        const selectedServiceData = services.find(s => s.id.toString() === selectedService)
+        if (!selectedServiceData) return false
+        
+        const cleanSlot = slot.includes('T') ? slot.split('T')[1].substring(0, 5) : slot
+        const cleanSelectedTime = selectedTimeSlot.includes('T') ? selectedTimeSlot.split('T')[1].substring(0, 5) : selectedTimeSlot
+        
+        const occupiedSlots = getOccupiedSlots(cleanSelectedTime, selectedServiceData.duration)
+        return occupiedSlots.includes(cleanSlot)
+    }
+
+    // Calcular horário de término do serviço
+    const getEndTime = (startTime: string, duration: number): string => {
+        const cleanStartTime = startTime.includes('T') ? startTime.split('T')[1].substring(0, 5) : startTime
+        const [hours, minutes] = cleanStartTime.split(':').map(Number)
+        const totalMinutes = hours * 60 + minutes + duration
+        const endHours = Math.floor(totalMinutes / 60)
+        const endMinutes = totalMinutes % 60
+        return `${endHours.toString().padStart(2, '0')}:${endMinutes.toString().padStart(2, '0')}`
+    }
+
+    // Handler para seleção de horário com fechamento do collapse
+    const handleTimeSlotSelection = (slot: string) => {
+        console.log('🕐 Selecionando horário:', slot)
+        console.log('🕐 Tipo do slot:', typeof slot)
+        console.log('🕐 Slot como JSON:', JSON.stringify(slot))
+        
+        if (selectedTimeSlot === slot) {
+            setSelectedTimeSlot('')
+            setIsScheduleOpen(true) // Reabrir quando cancelar
+        } else {
+            setSelectedTimeSlot(slot)
+            setIsScheduleOpen(false) // Fechar quando selecionar
+        }
+    }
+
+    // Organizar horários por período para facilitar visualização
+    const organizeSlotsByPeriod = (slots: string[]) => {
+        const periods = {
+            manha: [] as string[],
+            tarde: [] as string[],
+            noite: [] as string[]
+        }
+
+        slots.forEach(slot => {
+            const hour = parseInt(slot.split(':')[0])
+            if (hour >= 6 && hour < 12) {
+                periods.manha.push(slot)
+            } else if (hour >= 12 && hour < 18) {
+                periods.tarde.push(slot)
+            } else {
+                periods.noite.push(slot)
+            }
+        })
+
+        return periods
+    }
+
+    useEffect(() => {
+        console.log('🔄 useEffect executado - selectedDate:', selectedDate)
+        if (!authLoading) {
+            loadData()
+            loadServices() // Carregar serviços também
+            loadSchedule(selectedDate) // Carregar schedule da data selecionada
+        }
+    }, [pagination.page, selectedDate, authLoading])
+
+    // Debug: Monitorar mudanças nos timeSlots
+    useEffect(() => {
+        console.log('🔍 timeSlots atualizados:', timeSlots.length, 'slots')
+        console.log('🔍 timeSlots detalhes:', timeSlots)
+    }, [timeSlots])
+
+    // Recarregar slots quando a data do modal mudar
+    useEffect(() => {
+        if (selectedService && isNewBookingModalOpen) {
+            loadAvailableSlots(selectedService)
+            setSelectedTimeSlot('') // Limpar horário selecionado
+            setIsScheduleOpen(true) // Reabrir collapse
+        }
+    }, [modalSelectedDate, selectedService, isNewBookingModalOpen])
+
+    // Auto-refresh a cada 30 segundos
+    useEffect(() => {
+        const interval = setInterval(() => {
+            loadData(true) // isRefresh = true para não mostrar loading
+        }, 30000) // 30 segundos
+
+        // Cleanup do interval quando o componente for desmontado
+        return () => {
+            clearInterval(interval)
+        }
+    }, []) // Dependência vazia para executar apenas uma vez
+
+    // Função para criar novo booking
+    const handleCreateBooking = async () => {
+        if (!selectedVehicle || !selectedService || !selectedTimeSlot || !modalSelectedDate) {
+            alert('Por favor, preencha todos os campos obrigatórios')
+            return
+        }
+
+        try {
+            
+            // Combinar data + horário de forma mais segura
+            const scheduledDateTime = new Date(modalSelectedDate)
+            
+            // Verificar se a data é válida
+            if (isNaN(scheduledDateTime.getTime())) {
+                throw new Error('Data inválida')
+            }
+            
+            // Limpar e validar horário
+            let cleanTimeSlot = selectedTimeSlot.trim()
+            
+            // Se o horário está no formato ISO (2025-10-27T08:00:00Z), extrair apenas a parte do horário
+            if (cleanTimeSlot.includes('T')) {
+                // CORREÇÃO: Extrair horário diretamente da string ISO sem conversão de timezone
+                const timePart = cleanTimeSlot.split('T')[1].split('Z')[0] // "16:00:00"
+                cleanTimeSlot = timePart.substring(0, 5) // "16:00"
+            }
+            
+            // Parsear horário
+            const timeParts = cleanTimeSlot.split(':')
+            
+            if (timeParts.length !== 2) {
+                throw new Error(`Formato de horário inválido: esperado HH:MM, recebido: "${cleanTimeSlot}"`)
+            }
+            
+            const hours = parseInt(timeParts[0], 10)
+            const minutes = parseInt(timeParts[1], 10)
+            
+            if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+                throw new Error('Horário inválido')
+            }
+            
+            scheduledDateTime.setHours(hours, minutes, 0, 0)
+            
+            
+            // NOVA ABORDAGEM: Enviar horário local com timezone em vez de UTC
+            // Isso evita problemas de sincronização entre frontend e backend
+            
+            // Detectar timezone automaticamente
+            const offset = scheduledDateTime.getTimezoneOffset()
+            const offsetHours = Math.floor(Math.abs(offset) / 60)
+            const offsetMinutes = Math.abs(offset) % 60
+            const offsetSign = offset > 0 ? '-' : '+'
+            const timezoneString = `${offsetSign}${offsetHours.toString().padStart(2, '0')}:${offsetMinutes.toString().padStart(2, '0')}`
+            
+            // Construir timestamp com timezone local usando os valores corretos do scheduledDateTime
+            const year = scheduledDateTime.getFullYear()
+            const month = String(scheduledDateTime.getMonth() + 1).padStart(2, '0')
+            const day = String(scheduledDateTime.getDate()).padStart(2, '0')
+            const hourStr = String(scheduledDateTime.getHours()).padStart(2, '0')
+            const minuteStr = String(scheduledDateTime.getMinutes()).padStart(2, '0')
+            
+            
+            // Formato: YYYY-MM-DDTHH:MM:SS-03:00 (com timezone local)
+            const scheduledAtISO = `${year}-${month}-${day}T${hourStr}:${minuteStr}:00${timezoneString}`
+            
+
+            const bookingData: CreateBookingRequest = {
+                company_id: selectedVehicle.company_id,
+                client_id: selectedVehicle.client_id,
+                vehicle_id: selectedVehicle.id,
+                service_ids: [parseInt(selectedService)],
+                scheduled_at: scheduledAtISO,
+                status: 'created',
+                notes: ""
+            }
 
 
-	return (
-		<SidebarProvider>
-			<AppSidebar />
-			<SidebarInset className='bg-white'>
-				<Header 
-					breadcrumbs={[
-						{ label: 'Dashboard', href: '/dashboard' },
-						{ label: 'Agendamentos'},
-					]}
-				/>
-				<div className='flex flex-1 flex-col gap-4 mx-8 pt-0 mt-10 mb-8'>
-					<div className='flex-1'>
-						
-						{/* Loading de serviços e configurações */}
-						{loadingServices || loadingSettings ? (
-							<div className='flex items-center justify-center h-64'>
-								<Loader2 className='h-8 w-8 animate-spin' />
-								<span className='ml-2 text-lg'>
-									{loadingServices && loadingSettings 
-										? 'Carregando dados...' 
-										: loadingServices 
-											? 'Carregando serviços...' 
-											: 'Carregando configurações...'}
-								</span>
-							</div>
-						) : servicesError || settingsError ? (
-							<div className='flex flex-col items-center justify-center h-64'>
-								<p className='text-red-500 text-lg mb-4'>
-									{servicesError || settingsError}
-								</p>
-								<Button 
-									onClick={() => window.location.reload()}
-									className='bg-[#317CE5] hover:bg-[#2563eb]'
-								>
-									Tentar Novamente
-								</Button>
-							</div>
-						) : (
-							<>
-								{/* Serviços */}
-								<div className='mb-6'>
-									<div className='flex items-center gap-3'>
-										{services.map((service) => (
-											<button
-												key={service.id}
-												onClick={() => {
-													setSelectedService(service)
-													setSelectedTime(null) // Reset selected time when changing service
-													setErrorMessage(null) // Clear error message when changing service
-												}}
-												className={`
-													px-4 h-[90px] rounded-lg border transition-all font-inter font-medium text-sm flex items-center justify-center
-													${selectedService?.id === service.id
-														? 'bg-[#317CE5] text-white border-[#317CE5]'
-														: 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
-													}
-												`}
-											>
-												<div className='text-center'>
-													<div>{service.name}</div>
-													<div className='text-xs opacity-75'>{service.duration} minutos</div>
-												</div>
-											</button>
-										))}
-									</div>
-								</div>
+            const newBooking = await bookingsListService.createBooking(bookingData)
+            
+            
+            // Fechar modal e limpar estados
+            setIsNewBookingModalOpen(false)
+            setSelectedService('')
+            setSelectedTimeSlot('')
+            setSelectedVehicle(null)
+            setAvailableSlots([])
+            
+            // Recarregar lista de bookings
+            loadData()
+            
+        } catch (error: any) {
+            console.error('💥 Erro ao criar booking:', error)
+            alert(`Erro ao criar agendamento: ${error.message}`)
+        }
+    }
 
-								{/* Dias da semana */}
-								<div className='mb-8'>
-									<div className='flex gap-3 overflow-x-auto pb-2'>
-										{days.map((day) => (
-											<button
-												key={day.date.toISOString()}
-												onClick={() => setSelectedDate(day.date)}
-												className={`
-													w-[124px] flex flex-col items-center justify-center px-4 h-[90px] rounded-lg border transition-all font-inter font-medium text-sm mr-2
-													${isSameDay(day.date, selectedDate) 
-														? 'bg-[#317CE5] text-white border-[#317CE5]' 
-														: 'bg-gray-50 text-gray-700 hover:bg-gray-100 border-gray-200'
-													}
-													${isToday(day.date) && !isSameDay(day.date, selectedDate) 
-														? 'ring-2 ring-[#317CE5]' 
-														: ''
-													}
-												`}
-											>
-												<span className='text-[14px] font-medium font-inter mb-1'>{day.dayName}</span>
-												<span className='text-lg font-bold font-inter'>{day.dayNumber}</span>
-											</button>
-										))}
-									</div>
-								</div>
+    const getStatusColor = (status: BookingStatus): string => {
+        switch (status) {
+            case 'pending': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
+            case 'confirmed': return 'bg-blue-100 text-blue-800 border-blue-200'
+            case 'in_progress': return 'bg-purple-100 text-purple-800 border-purple-200'
+            case 'completed': return 'bg-green-100 text-green-800 border-green-200'
+            case 'cancelled': return 'bg-red-100 text-red-800 border-red-200'
+            default: return 'bg-gray-100 text-gray-800 border-gray-200'
+        }
+    }
 
-						{/* Horários disponíveis */}
-						<div className='flex-1'>
-							
-							{errorMessage && (
-								<div className='mb-4 p-3 bg-red-50 border border-red-200 rounded-lg'>
-									<p className='text-sm text-red-600 font-inter'>{errorMessage}</p>
-								</div>
-							)}
-							
-							<div className='grid grid-cols-5 gap-3 pb-24'>
-								{selectedDayData?.timeSlots.map((slot) => {
-									const isBlocked = isTimeSlotBlocked(slot.time)
-									const isSelected = selectedTime === slot.time
-									const isPartOfSelectedRange = isSelected || isBlocked
-									
-									// Verificar se este slot faz parte de um agendamento confirmado
-									const isConfirmed = confirmedBooking && 
-										isSameDay(confirmedBooking.date, selectedDate) &&
-										isPartOfConfirmedRange(slot.time, confirmedBooking)
-									
-									const handleSlotClick = () => {
-										// Se é um agendamento confirmado, mostrar modal de cancelamento
-										if (isConfirmed) {
-											console.log('Opening cancel modal for confirmed booking')
-											setShowCancelModal(true)
-											return
-										}
-										
-										// Se clicar em qualquer parte do bloco selecionado (não confirmado), cancela facilmente
-										if (isPartOfSelectedRange) {
-											setSelectedTime(null)
-											setErrorMessage(null)
-											return
-										}
-										
-										if (!slot.available) return
-										
-										if (selectedDayData && canScheduleService(slot.time, selectedDayData)) {
-											setSelectedTime(slot.time)
-											setErrorMessage(null)
-										} else {
-											setErrorMessage(`Não é possível agendar ${selectedService?.name} às ${slot.time}. Verifique se há horários consecutivos disponíveis.`)
-											setSelectedTime(null)
-										}
-									}
-									
-									return (
-										<button
-											key={slot.id}
-											onClick={handleSlotClick}
-											disabled={!slot.available && !isPartOfSelectedRange}
-											className={`
-												h-16 rounded-lg transition-all font-inter font-medium flex items-center justify-center
-												${isConfirmed
-													? 'cursor-pointer text-white' 
-													: isPartOfSelectedRange
-														? 'cursor-pointer text-white' 
-														: slot.available 
-															? 'bg-gray-50 text-gray-700 hover:bg-gray-100' 
-															: 'bg-gray-100 text-gray-400 opacity-50 cursor-not-allowed'
-												}
-											`}
-											style={
-												isConfirmed ? {
-													backgroundColor: '#317CE5' // Azul para confirmado
-												} : isPartOfSelectedRange ? {
-													backgroundColor: '#f27983' // Coral para selecionado
-												} : {}
-											}
-										>
-											{isConfirmed ? (
-												<div className='text-center'>
-													<div>{slot.time}</div>
-													<div className='text-xs opacity-75 mt-1'>
-														<span className='font-bold'>{PLATE}</span> - <span className='capitalize font-medium'>{confirmedBooking.status}</span>
-													</div>
-												</div>
-											) : isPartOfSelectedRange ? (
-												<div className='text-center'>
-													<div>{slot.time}</div>
-													<div className='text-xs opacity-75 mt-1'>
-														<span className='font-bold'>{PLATE}</span> - {selectedService?.name}
-													</div>
-												</div>
-											) : (
-												<div>{slot.time}</div>
-											)}
-										</button>
-									)
-								})}
-							</div>
-						</div>
+    const getStatusLabel = (status: BookingStatus): string => {
+        switch (status) {
+            case 'pending': return 'Pendente'
+            case 'confirmed': return 'Confirmado'
+            case 'in_progress': return 'Em Andamento'
+            case 'completed': return 'Concluído'
+            case 'cancelled': return 'Cancelado'
+            case 'reserved': return 'Agendado'
+            default: return status
+        }
+    }
 
-						{/* Botão de confirmação */}
-						{selectedTime && (
-							<div className='fixed bottom-8 left-8 right-8 md:left-auto md:right-8 md:max-w-md'>
-								<Button 
-									onClick={() => {
-										if (selectedService) {
-											setConfirmedBooking({
-												time: selectedTime,
-												service: selectedService,
-												date: selectedDate,
-												status: 'agendado'
-											})
-											setSelectedTime(null)
-										}
-									}}
-									className='w-full h-14 bg-[#317CE5] hover:bg-[#2563eb] text-white font-semibold font-inter rounded-xl'
-								>
-									<div className='text-center'>
-										<div>Confirmar {selectedService?.name} - {selectedTime}</div>
-										<div className='text-xs opacity-90'>
-											Duração: {selectedService?.duration}min (até {getNextTimeSlot(selectedTime)})
-										</div>
-									</div>
-								</Button>
-							</div>
-						)}
+    const handleRefresh = () => {
+        loadData()
+    }
 
-						{/* Modal de gerenciamento do agendamento */}
-						<Dialog open={showCancelModal} onOpenChange={setShowCancelModal}>
-							<DialogContent className='max-w-lg bg-white'>
-								<DialogHeader>
-									<DialogTitle className='font-inter'>{PLATE}</DialogTitle>
-									<DialogDescription className='font-inter leading-relaxed'>
-										<div className='flex flex-row items-center justify-between mt-2 mb-2'>
-											<p className='font-regular text-black'>{confirmedBooking?.service.name}</p>
-											<p className='font-regular text-black'>{confirmedBooking?.time}</p>
-										</div>
+    const handlePageChange = (newPage: number) => {
+        setPagination(prev => ({ ...prev, page: newPage }))
+    }
 
-										<div className='space-y-1'>
-											<p className='font-regular capitalize text-black'>{confirmedBooking?.status}</p>
-										</div>
-									</DialogDescription>
-								</DialogHeader>
-								
-								{/* Botões de Status */}
-								<div className='space-y-3'>
-									<div className='grid grid-cols-2 gap-2'>
-										<Button 
-											onClick={() => {
-												if (confirmedBooking) {
-													setConfirmedBooking({...confirmedBooking, status: 'aspirando'})
-												}
-											}}
-											variant={confirmedBooking?.status === 'aspirando' ? 'default' : 'outline'}
-											className='font-inter text-sm'
-										>
-											1 - Aspirando
-										</Button>
-										<Button 
-											onClick={() => {
-												if (confirmedBooking) {
-													setConfirmedBooking({...confirmedBooking, status: 'lavando'})
-												}
-											}}
-											variant={confirmedBooking?.status === 'lavando' ? 'default' : 'outline'}
-											className='font-inter text-sm'
-										>
-											2 - Lavando
-										</Button>
-										<Button 
-											onClick={() => {
-												if (confirmedBooking) {
-													setConfirmedBooking({...confirmedBooking, status: 'secando'})
-												}
-											}}
-											variant={confirmedBooking?.status === 'secando' ? 'default' : 'outline'}
-											className='font-inter text-sm'
-										>
-											3 - Secagem
-										</Button>
-										<Button 
-											onClick={() => {
-												if (confirmedBooking) {
-													setConfirmedBooking({...confirmedBooking, status: 'finalizado'})
-												}
-											}}
-											variant={confirmedBooking?.status === 'finalizado' ? 'default' : 'outline'}
-											className='font-inter text-sm'
-										>
-											4 - Finalizado
-										</Button>
-									</div>
-								</div>
+    if (loading && bookings.length === 0) {
+        return (
+            <SidebarProvider>
+                <AppSidebar />
+                <SidebarInset className='bg-white'>
+                    <Header 
+                        breadcrumbs={[
+                            { label: 'Dashboard', href: '/dashboard' },
+                            { label: 'Agendamentos' }
+                        ]}
+                    />
+                    <div className='flex items-center justify-center h-64'>
+                        <Loader2 className='h-8 w-8 animate-spin' />
+                        <span className='ml-2 text-lg'>Carregando agendamentos...</span>
+                    </div>
+                </SidebarInset>
+            </SidebarProvider>
+        )
+    }
 
-								<DialogFooter className='gap-3 pt-4 border-t'>
-									<Button 
-										onClick={() => {
-											setConfirmedBooking(null)
-											setShowCancelModal(false)
-										}}
-										variant="destructive"
-										className="font-inter"
-									>
-										Cancelar Agendamento
-									</Button>
-									<Button 
-										onClick={() => setShowCancelModal(false)}
-										variant="outline"
-										className="font-inter"
-									>
-										Atualizar Status
-									</Button>
-								</DialogFooter>
-							</DialogContent>
-						</Dialog>
-							</>
-						)}
-					</div>
-				</div>
-			</SidebarInset>
-		</SidebarProvider>
-  	)
+    if (error) {
+        return (
+            <SidebarProvider>
+                <AppSidebar />
+                <SidebarInset className='bg-white'>
+                    <Header 
+                        breadcrumbs={[
+                            { label: 'Dashboard', href: '/dashboard' },
+                            { label: 'Agendamentos' }
+                        ]}
+                    />
+                    <div className='flex flex-col items-center justify-center h-64'>
+                        <p className='text-red-500 text-lg mb-4'>{error}</p>
+                        <Button onClick={handleRefresh} className='bg-[#317CE5] hover:bg-[#2563eb]'>
+                            Tentar Novamente
+                        </Button>
+                    </div>
+                </SidebarInset>
+            </SidebarProvider>
+        )
+    }
+
+    return (
+        <SidebarProvider>
+            <AppSidebar />
+            <SidebarInset className='bg-white'>
+                <Header 
+                    breadcrumbs={[
+                        { label: 'Dashboard', href: '/dashboard' },
+                        { label: 'Agendamentos' }
+                    ]}
+                />
+                <div className='flex flex-1 flex-col gap-6 mx-8 pt-0 mt-10 mb-8'>
+                    
+                    {/* Seletor de Dias da Semana com Botão Novo Agendamento */}
+                    <div className='flex justify-between items-center gap-4'>
+                        {/* Dias da semana à esquerda */}
+                        <div className='flex gap-2 overflow-x-auto pb-2 flex-1'>
+                            {generateWeekDays().map((date, index) => {
+                                const isSelected = selectedDate.toDateString() === date.toDateString()
+                                const isToday = new Date().toDateString() === date.toDateString()
+                                
+                                return (
+                                    <button
+                                        key={index}
+                                        onClick={() => setSelectedDate(date)}
+                                        className={`
+                                            flex flex-col items-center justify-center px-4 py-3 rounded-lg border transition-all font-medium text-sm min-w-[80px]
+                                            ${isSelected 
+                                                ? 'bg-[#317CE5] text-white border-[#317CE5]' 
+                                                : 'bg-white text-gray-700 hover:bg-gray-50 border-gray-200'
+                                            }
+                                            ${isToday && !isSelected 
+                                                ? 'ring-2 ring-[#317CE5] ring-opacity-50' 
+                                                : ''
+                                            }
+                                        `}
+                                    >
+                                        <span className='text-xs opacity-75'>
+                                            {date.toLocaleDateString('pt-BR', { weekday: 'short' })}
+                                        </span>
+                                        <span className='text-lg font-bold'>
+                                            {date.getDate()}
+                                        </span>
+                                        <span className='text-xs opacity-75'>
+                                            {date.toLocaleDateString('pt-BR', { month: 'short' })}
+                                        </span>
+                                    </button>
+                                )
+                            })}
+                        </div>
+                        
+                        {/* Botão Novo Agendamento à direita */}
+                        <Button 
+                            onClick={() => setIsNewBookingModalOpen(true)} 
+                            className='bg-[#317CE5] hover:bg-[#2563eb] px-4 py-3 h-[60px]'
+                        >
+                            <CalendarClock className='h-4 w-4 mr-2' />
+                            Novo Agendamento
+                        </Button>
+                    </div>
+
+                    {/* Tabela de Horários */}
+                    <div className='bg-white rounded-md overflow-hidden border border-[#EFEFEF]'>
+                        <div className='overflow-x-auto'>
+                            <table className='w-full'>
+                                <thead className='h-[60px] bg-[#F9F9F9]'>
+                                    <tr>
+                                        <th className='text-left px-6 py-3 text-black text-[12px] font-bold border-b border-gray-100'>
+                                            <div className='flex items-center gap-2'>
+                                                HORÁRIO
+                                            </div>
+                                        </th>
+                                        <th className='text-left px-6 py-3 text-black text-[12px] font-bold border-b border-gray-100'>
+                                            <div className='flex items-center gap-2'>
+                                                PLACA / CONTATO
+                                            </div>
+                                        </th>
+                                        <th className='text-left px-6 py-3 text-black text-[12px] font-bold border-b border-gray-100'>
+                                            <div className='flex items-center gap-2'>
+                                                SERVIÇO
+                                            </div>
+                                        </th>
+                                        <th className='text-left px-6 py-3 text-black text-[12px] font-bold border-b border-gray-100'>
+                                            STATUS
+                                        </th>
+                                    </tr>
+                                </thead>
+                                <tbody className='divide-y divide-gray-100'>
+                                    {timeSlots.length === 0 && (
+                                        <tr>
+                                            <td colSpan={4} className='px-6 py-8 text-center text-gray-500'>
+                                                Nenhum horário disponível para esta data
+                                            </td>
+                                        </tr>
+                                    )}
+                                    {timeSlots.map((slot, index) => {
+                                        const slotWithAvailability = slot as TimeSlot & { available: boolean }
+                                        return (
+                                            <tr key={index} className='transition-colors hover:bg-gray-50'>
+                                                {/* Horário */}
+                                                <td className='px-6 py-3'>
+                                                    <span className='font-semibold text-black text-[14.5px]'>
+                                                        {slot.time}
+                                                    </span>
+                                                </td>
+
+                                                {/* Placa */}
+                                                <td className='px-6 py-3'>
+                                                    {slot.booking ? (
+                                                        <div>
+                                                            <span className='font-semibold text-black text-[14.5px]'>
+                                                                {slot.booking.vehicle_plate}
+                                                            </span>
+                                                            {(slot.booking as any).client_phone && (
+                                                                <div className='text-xs text-gray-500'>
+                                                                    {(slot.booking as any).client_phone}
+                                                                </div>
+                                                            )}
+                                                        </div>
+                                                    ) : (
+                                                        <span className='text-gray-400'>-</span>
+                                                    )}
+                                                </td>
+
+                                                {/* Serviços */}
+                                                <td className='px-6 py-3'>
+                                                    {slot.booking ? (
+                                                        <span className='text-sm text-gray-700'>
+                                                            {(slot.booking as any).service_names?.join(', ') || 'Serviço'}
+                                                        </span>
+                                                    ) : (
+                                                        <span className='text-gray-400'>Disponível</span>
+                                                    )}
+                                                </td>
+
+                                                {/* Status */}
+                                                <td className='px-6 py-3'>
+                                                    {slot.booking ? (
+                                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(slot.booking.status)}`}>
+                                                            {getStatusLabel(slot.booking.status)}
+                                                        </span>
+                                                    ) : slotWithAvailability.available ? (
+                                                        <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800'>
+                                                            Livre
+                                                        </span>
+                                                    ) : (
+                                                        <span className='inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800'>
+                                                            Ocupado
+                                                        </span>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        )
+                                    })}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    {/* Paginação */}
+                    {pagination.totalPages > 1 && (
+                        <div className='flex items-center justify-between'>
+                            <div className='text-sm text-gray-600'>
+                                Mostrando {bookings.length} de {pagination.total} agendamentos
+                            </div>
+                            <div className='flex gap-2'>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handlePageChange(pagination.page - 1)}
+                                    disabled={pagination.page === 1}
+                                >
+                                    Anterior
+                                </Button>
+                                <span className='px-3 py-2 text-sm'>
+                                    Página {pagination.page} de {pagination.totalPages}
+                                </span>
+                                <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => handlePageChange(pagination.page + 1)}
+                                    disabled={pagination.page === pagination.totalPages}
+                                >
+                                    Próxima
+                                </Button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Estado vazio */}
+                    {bookings.length === 0 && !loading && (
+                        <div className='flex flex-col items-center justify-center h-64'>
+                            <Calendar className='h-12 w-12 text-gray-400 mb-4' />
+                            <h3 className='text-lg font-semibold text-gray-900 mb-2'>Nenhum agendamento encontrado</h3>
+                            <p className='text-gray-600 text-center mb-4'>
+                                Nenhum agendamento encontrado para {selectedDate.toLocaleDateString('pt-BR', { 
+                                    weekday: 'long', 
+                                    day: '2-digit', 
+                                    month: '2-digit' 
+                                })}
+                            </p>
+                            <p className='text-gray-500 text-center text-sm mb-4'>
+                                Tente selecionar outro dia ou criar um novo agendamento
+                            </p>
+                            <Button 
+                                onClick={() => nav('/bookings')} 
+                                className='bg-[#317CE5] hover:bg-[#2563eb]'
+                            >
+                                <Plus className='h-4 w-4 mr-2' />
+                                Novo Agendamento
+                            </Button>
+                        </div>
+                    )}
+
+                </div>
+            </SidebarInset>
+
+            {/* Dialog de Novo Agendamento */}
+            <Dialog open={isNewBookingModalOpen} onOpenChange={setIsNewBookingModalOpen}>
+                <DialogContent className="sm:max-w-4xl">
+                    <DialogHeader>
+                        <DialogTitle>Novo Agendamento</DialogTitle>
+                    </DialogHeader>
+                    
+                    <div className="space-y-4">
+                        {/* Linha com Serviço e Dias da Semana */}
+                        <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                                <label className="text-sm font-medium">Serviço</label>
+                                <label className="text-sm font-medium">Data</label>
+                            </div>
+                            <div className="flex gap-4 items-start">
+                                {/* Select de Serviço */}
+                                <div className="flex-1">
+                                    <Select value={selectedService} onValueChange={handleServiceChange}>
+                                        <SelectTrigger className="w-full h-[60px]">
+                                            <SelectValue placeholder="Selecione um serviço" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            {services.map((service) => (
+                                                <SelectItem key={service.id} value={service.id.toString()}>
+                                                    <div className="flex justify-between items-center w-full">
+                                                        <span>{service.name}</span>
+                                                        <div className="flex gap-2 text-xs text-gray-500 ml-2">
+                                                            <span>R$ {service.price.toFixed(2)}</span>
+                                                            <span>{service.duration}min</span>
+                                                        </div>
+                                                    </div>
+                                                </SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                </div>
+
+                                {/* Botões dos Dias da Semana */}
+                                <div className="flex gap-1">
+                                    {generateWeekDays().map((day, index) => {
+                                        const isSelected = day.toDateString() === modalSelectedDate.toDateString()
+                                        const dayName = day.toLocaleDateString('pt-BR', { weekday: 'short' }).replace('.', '')
+                                        const dayNumber = day.getDate()
+                                        
+                                        // Verificar se é data passada (antes de hoje)
+                                        const today = new Date()
+                                        today.setHours(0, 0, 0, 0) // Zerar horas para comparar apenas a data
+                                        const dayToCompare = new Date(day)
+                                        dayToCompare.setHours(0, 0, 0, 0)
+                                        const isPastDate = dayToCompare < today
+                                        
+                                        return (
+                                            <button
+                                                key={index}
+                                                onClick={() => !isPastDate && setModalSelectedDate(day)}
+                                                disabled={isPastDate}
+                                                className={`
+                                                    flex flex-col items-center justify-center p-2 rounded-lg border transition-colors min-w-[50px] h-[60px]
+                                                    ${isPastDate 
+                                                        ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed opacity-50' 
+                                                        : isSelected 
+                                                            ? 'bg-[#317CE5] text-white border-[#317CE5]' 
+                                                            : 'bg-white hover:bg-gray-50 border-gray-200 cursor-pointer'
+                                                    }
+                                                `}
+                                            >
+                                                <span className="text-xs font-medium">{dayName}</span>
+                                                <span className="text-sm font-bold">{dayNumber}</span>
+                                            </button>
+                                        )
+                                    })}
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Collapsible de Horários */}
+                        {selectedService && (
+                            <Collapsible open={isScheduleOpen} onOpenChange={setIsScheduleOpen}>
+                                <div className="space-y-2">
+                                    <CollapsibleTrigger asChild>
+                                        <div className={`flex items-center justify-between p-4 border rounded-lg cursor-pointer transition-colors ${
+                                            selectedTimeSlot 
+                                                ? 'bg-[#317CE5] text-white border-[#317CE5] hover:bg-[#2563eb]' 
+                                                : 'hover:bg-gray-50'
+                                        }`}>
+                                            {selectedTimeSlot ? (
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="h-4 w-4 text-white" />
+                                                    <span className="font-medium">
+                                                        {services.find(s => s.id.toString() === selectedService)?.name} • {' '}
+                                                        {selectedTimeSlot.includes('T') ? selectedTimeSlot.split('T')[1].substring(0, 5) : selectedTimeSlot} às {' '}
+                                                        {getEndTime(selectedTimeSlot, services.find(s => s.id.toString() === selectedService)?.duration || 0)}
+                                                    </span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex items-center gap-2">
+                                                    <Clock className="h-4 w-4" />
+                                                    <span className="text-sm font-medium">
+                                                        Horários Disponíveis Hoje
+                                                        {loadingSlots && <span className="text-xs text-gray-500 ml-2">(carregando...)</span>}
+                                                    </span>
+                                                </div>
+                                            )}
+                                            <span className="text-xs text-gray-500">
+                                                {isScheduleOpen ? '▲' : '▼'}
+                                            </span>
+                                        </div>
+                                    </CollapsibleTrigger>
+                                    
+                                    <CollapsibleContent>
+                                        {loadingSlots ? (
+                                            <div className="flex items-center justify-center p-8 text-gray-500">
+                                                <Loader2 className="h-6 w-6 animate-spin mr-2" />
+                                                Carregando horários...
+                                            </div>
+                                        ) : availableSlots.length > 0 ? (
+                                            <div className="border rounded-lg overflow-hidden max-h-[32rem] overflow-y-auto">
+                                                {availableSlots.filter((slot) => {
+                                                    // Filtrar horários que já passaram se for hoje
+                                                    const today = new Date()
+                                                    const selectedDay = new Date(modalSelectedDate)
+                                                    
+                                                    // Se não for hoje, mostrar todos os horários
+                                                    if (selectedDay.toDateString() !== today.toDateString()) {
+                                                        return true
+                                                    }
+                                                    
+                                                    // Se for hoje, verificar se o horário já passou
+                                                    let slotTime: string
+                                                    if (slot.includes('T')) {
+                                                        // Formato ISO: "2025-10-27T08:00:00Z"
+                                                        slotTime = slot.split('T')[1].substring(0, 5)
+                                                    } else {
+                                                        // Formato simples: "08:00"
+                                                        slotTime = slot
+                                                    }
+                                                    
+                                                    const [hours, minutes] = slotTime.split(':').map(Number)
+                                                    const slotDateTime = new Date()
+                                                    slotDateTime.setHours(hours, minutes, 0, 0)
+                                                    
+                                                    // Retornar true se o horário ainda não passou
+                                                    return slotDateTime > today
+                                                }).map((slot) => (
+                                                    <div
+                                                        key={slot}
+                                                        onClick={() => handleTimeSlotSelection(slot)}
+                                                        className={`
+                                                            flex items-center justify-between p-4 border-b last:border-b-0 cursor-pointer transition-colors
+                                                            ${selectedTimeSlot === slot 
+                                                                ? 'bg-[#317CE5] text-white' 
+                                                                : isSlotOccupied(slot)
+                                                                    ? 'bg-blue-100 text-blue-800 border-blue-200'
+                                                                    : 'bg-white hover:bg-gray-50'
+                                                            }
+                                                        `}
+                                                    >
+                                                        <span className="font-medium text-sm">
+                                                            {slot.includes('T') ? slot.split('T')[1].substring(0, 5) : slot}
+                                                        </span>
+                                                        <span className="text-sm opacity-75">
+                                                            Disponível
+                                                        </span>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        ) : (
+                                            <div className="text-center p-8 text-gray-500 border rounded-lg bg-gray-50">
+                                                <Clock className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+                                                {(() => {
+                                                    const today = new Date()
+                                                    const selectedDay = new Date(modalSelectedDate)
+                                                    const isToday = selectedDay.toDateString() === today.toDateString()
+                                                    
+                                                    if (isToday) {
+                                                        return (
+                                                            <>
+                                                                <p>Nenhum horário disponível hoje</p>
+                                                                <p className="text-xs mt-1">Os horários de hoje já passaram. Tente selecionar outro dia.</p>
+                                                            </>
+                                                        )
+                                                    } else {
+                                                        return (
+                                                            <>
+                                                                <p>Nenhum horário disponível para este serviço</p>
+                                                                <p className="text-xs mt-1">Tente selecionar outro dia</p>
+                                                            </>
+                                                        )
+                                                    }
+                                                })()}
+                                            </div>
+                                        )}
+                                    </CollapsibleContent>
+                                </div>
+                            </Collapsible>
+                        )}
+
+                        {/* Seletor de Cliente - aparece apenas quando horário for selecionado */}
+                        {selectedTimeSlot && (
+                            <CustomerSelector 
+                                onVehicleSelect={setSelectedVehicle}
+                                selectedVehicle={selectedVehicle || undefined}
+                            />
+                        )}
+                        
+                        <div className="flex gap-2 justify-end">
+                            <Button 
+                                variant="outline" 
+                                onClick={() => setIsNewBookingModalOpen(false)}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button 
+                                className="bg-[#317CE5] hover:bg-[#2563eb]"
+                                onClick={handleCreateBooking}
+                                disabled={!selectedVehicle || !selectedService || !selectedTimeSlot}
+                            >
+                                Salvar
+                            </Button>
+                        </div>
+                    </div>
+                </DialogContent>
+            </Dialog>
+        </SidebarProvider>
+    )
 }

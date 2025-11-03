@@ -72,6 +72,17 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 							</SidebarMenuButton>
 						</SidebarMenuItem>
 
+						<SidebarMenuItem>
+							<SidebarMenuButton asChild tooltip='Agendamentos' data-active={location.pathname === '/bookings'}>
+								<Link to='/bookings'>
+									<div className='w-[21px] h-[21px]'>
+										<Calendar size={21} />
+									</div>
+									<span className='pl-2 font-inter'>Agendamentos</span>
+								</Link>
+							</SidebarMenuButton>
+						</SidebarMenuItem>
+{/* 
 						<Collapsible asChild className='group/collapsible'>
 							<SidebarMenuItem>
 								<CollapsibleTrigger asChild>
@@ -104,7 +115,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 									</SidebarMenuSub>
 								</CollapsibleContent>
 							</SidebarMenuItem>
-						</Collapsible>
+						</Collapsible> */}
 
 						<SidebarMenuItem>
 							<SidebarMenuButton asChild tooltip='Veículos' data-active={location.pathname === '/vehicles'}>

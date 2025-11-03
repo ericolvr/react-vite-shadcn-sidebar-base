@@ -12,7 +12,7 @@ import { useAuth } from '../../contexts/context'
 
 export function Vehicles() {
 	const nav = useNavigate()
-	const { user } = useAuth()
+	const { getUserData, isLoggedIn, isLoading: authLoading } = useAuth()
 	const [vehicles, setVehicles] = useState<Vehicle[]>([])
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
@@ -37,11 +37,24 @@ export function Vehicles() {
 			setLoading(true)
 			setError(null)
 			
-			// Obter company_id do contexto de autenticação
-			const companyId = (user as any)?.company_id || 1
+			// Verificar se o usuário está logado
+			if (!isLoggedIn()) {
+				console.error('❌ Vehicles: Usuário não está logado')
+				nav('/')
+				return
+			}
+			
+			const userData = getUserData()
+			console.log('🔍 Vehicles: Dados do usuário (do JWT):', userData)
+			
+			if (!userData.company_id) {
+				console.error('❌ Vehicles: Company ID não encontrado no JWT')
+				throw new Error(`Company ID não encontrado no JWT. Dados: ${JSON.stringify(userData)}`)
+			}
 			
 			const limit = 20
-			const response = await vehiclesService.getVehicles(page, limit, companyId)
+			console.log('📡 Vehicles: Fazendo requisição com company_id do JWT:', userData.company_id)
+			const response = await vehiclesService.getVehicles(userData.company_id, page, limit)
 			console.log('📊 Resposta da API:', response)
 			setVehicles(response.vehicles)
 			setPagination({
@@ -77,8 +90,32 @@ export function Vehicles() {
 	}
 
 	useEffect(() => {
-		getVehicles()
-	}, [])
+		// Aguardar o contexto ser inicializado antes de carregar dados
+		if (!authLoading) {
+			getVehicles()
+		}
+	}, [authLoading])
+
+	// Mostrar loading enquanto o contexto está sendo inicializado
+	if (authLoading) {
+		return (
+			<SidebarProvider>
+				<AppSidebar />
+				<SidebarInset className='bg-white'>
+					<Header 
+						breadcrumbs={[
+							{ label: 'Dashboard', href: '/dashboard' },
+							{ label: 'Veículos' }
+						]}
+					/>
+					<div className='flex items-center justify-center h-64'>
+						<Loader2 className='h-8 w-8 animate-spin' />
+						<span className='ml-2 text-lg'>Inicializando...</span>
+					</div>
+				</SidebarInset>
+			</SidebarProvider>
+		)
+	}
 
 	return (
 		<SidebarProvider>
