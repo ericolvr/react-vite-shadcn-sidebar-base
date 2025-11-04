@@ -139,11 +139,6 @@ export default function AddBookings({ isOpen, onClose, onBookingCreated, selecte
             if (!userData.company_id) {
                 throw new Error('Company ID não encontrado')
             }
-
-            // Criar data/hora do agendamento de forma mais robusta
-            console.log('SUBMIT - Iniciando criação do booking...')
-            console.log('SUBMIT - modalSelectedDate:', modalSelectedDate)
-            console.log('SUBMIT - selectedTimeSlot:', selectedTimeSlot)
             
             // Validar modalSelectedDate
             if (!modalSelectedDate || isNaN(modalSelectedDate.getTime())) {
@@ -155,8 +150,6 @@ export default function AddBookings({ isOpen, onClose, onBookingCreated, selecte
             const month = modalSelectedDate.getMonth()
             const day = modalSelectedDate.getDate()
             
-            console.log('SUBMIT - Componentes da data:', { year, month, day })
-            
             // Processar selectedTimeSlot (pode estar em formato ISO ou HH:MM)
             let timeString = selectedTimeSlot
             
@@ -164,8 +157,7 @@ export default function AddBookings({ isOpen, onClose, onBookingCreated, selecte
             if (timeString.includes('T')) {
                 timeString = timeString.split('T')[1].substring(0, 5) // "08:00"
             }
-            
-            console.log('SUBMIT - timeString processado:', timeString)
+        
             
             // Validar formato HH:MM
             if (!/^\d{2}:\d{2}$/.test(timeString)) {
@@ -185,8 +177,6 @@ export default function AddBookings({ isOpen, onClose, onBookingCreated, selecte
             // Criar nova data com componentes específicos
             const scheduledDateTime = new Date(year, month, day, hours, minutes, 0, 0)
             
-            console.log('SUBMIT - scheduledDateTime criado:', scheduledDateTime)
-            
             // Validar se a data foi criada corretamente
             if (isNaN(scheduledDateTime.getTime())) {
                 throw new Error('Erro ao criar data/hora do agendamento')
@@ -205,15 +195,6 @@ export default function AddBookings({ isOpen, onClose, onBookingCreated, selecte
                 scheduled_at: localDateTimeString,
                 notes: `Agendamento criado via sistema - ${selectedTimeSlot}`
             }
-
-            console.log('🚀 POST /bookings - DADOS ENVIADOS:')
-            console.log('POST - Horário selecionado pelo usuário:', selectedTimeSlot)
-            console.log('POST - Horário processado (HH:MM):', timeString)
-            console.log('POST - Data local criada:', scheduledDateTime)
-            console.log('POST - Data convertida para ISO (UTC):', scheduledDateTime.toISOString())
-            console.log('POST - scheduled_at enviado para backend:', bookingData.scheduled_at)
-            console.log('POST - Diferença de timezone:', scheduledDateTime.getTimezoneOffset(), 'minutos')
-            console.log('POST - Body completo do POST:', JSON.stringify(bookingData, null, 2))
             
             await bookingsListService.createBooking(bookingData)
             
