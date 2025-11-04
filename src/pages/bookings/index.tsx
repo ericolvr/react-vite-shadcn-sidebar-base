@@ -87,31 +87,23 @@ export function Bookings() {
             
             // Verificar se o usuário está logado
             if (!isLoggedIn()) {
-                console.error('❌ Bookings: Usuário não está logado')
                 return
             }
             
             const userData = getUserData()
             if (!userData.company_id) {
-                console.error('❌ Bookings: Company ID não encontrado')
                 return
             }
             
             // Formatar data para API (YYYY-MM-DD)
             const dateString = date.toISOString().split('T')[0]
-            
-            console.log(`📅 Bookings: Carregando dados para ${dateString}`)
-            
+        
             // Buscar configurações da empresa, schedule e bookings em paralelo
             const [companySettings, scheduleData, bookingsData] = await Promise.all([
                 bookingsListService.getCompanySettings(userData.company_id),
                 bookingsListService.getSchedule(userData.company_id, dateString),
                 bookingsListService.getBookings(userData.company_id, 1, 100, undefined, undefined, dateString)
             ])
-            
-            console.log('⚙️ Bookings: Configurações da empresa:', companySettings)
-            console.log('📊 Bookings: Schedule carregado:', scheduleData)
-            console.log('📋 Bookings: Agendamentos carregados:', bookingsData)
             
             setCompanySettings(companySettings)
             setSchedule(scheduleData.schedule)
@@ -122,7 +114,6 @@ export function Bookings() {
             
             // Mapear com dados do schedule e bookings completos
             const slotsWithAvailability = mapSlotsWithSchedule(allSlots, scheduleData.schedule, bookingsData.bookings)
-            console.log('🎯 setTimeSlots chamado com:', slotsWithAvailability.length, 'slots')
             setTimeSlots(slotsWithAvailability)
             
         } catch (error) {
@@ -134,20 +125,16 @@ export function Bookings() {
     }
 
     // Gerar slots baseados nas configurações da empresa
-    const generateSlotsFromSettings = (settings: any, date: Date): string[] => {
-        console.log('🏗️ generateSlotsFromSettings chamada com:', { settings, date })
-        
+    const generateSlotsFromSettings = (settings: any, date: Date): string[] => {        
         const slots: string[] = []
         const isWeekend = date.getDay() === 0 || date.getDay() === 6 // 0 = Domingo, 6 = Sábado
         
-        console.log('📅 É fim de semana?', isWeekend)
         
         // Usar configurações da empresa
         let startTime: string
         let endTime: string
         
         if (settings) {
-            console.log('⚙️ Usando configurações da empresa:', settings)
             if (isWeekend) {
                 // Converter "08:00:00" para "08:00"
                 startTime = settings.start_work_weekend?.substring(0, 5) || '08:00'
@@ -164,9 +151,6 @@ export function Bookings() {
             endTime = isWeekend ? '17:00' : '18:00'
         }
         
-        console.log('🕐 Horários definidos:', { startTime, endTime })
-        
-        // Gerar slots de 30 minutos (conforme API)
         const slotDuration = 30
         
         const [startHour, startMinute] = startTime.split(':').map(Number)
@@ -181,29 +165,17 @@ export function Bookings() {
             const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`
             slots.push(timeString)
         }
-        
-        console.log(`🕐 Slots gerados para ${isWeekend ? 'fim de semana' : 'dia de semana'} (${startTime} - ${endTime}):`, slots.length, 'slots')
-        console.log('📋 Lista de slots:', slots)
         return slots
     }
 
     // Mapear slots gerados com dados do schedule da API e bookings completos
     const mapSlotsWithSchedule = (generatedSlots: string[], scheduleSlots: ScheduleSlot[], fullBookings: any[] = []): TimeSlot[] => {
-        console.log('🔗 mapSlotsWithSchedule chamada com:', { 
-            generatedSlotsCount: generatedSlots.length, 
-            scheduleSlotsCount: scheduleSlots.length,
-            fullBookingsCount: fullBookings.length
-        })
-        console.log('📋 Generated slots:', generatedSlots)
-        console.log('📋 Schedule slots:', scheduleSlots)
-        console.log('📋 Full bookings:', fullBookings)
         
         const mappedSlots = generatedSlots.map(timeSlot => {
             // Procurar slot correspondente no schedule da API
             const scheduleSlot = scheduleSlots.find(apiSlot => {
                 // Extrair apenas HH:MM da string UTC (ignorar timezone)
                 const apiTime = apiSlot.start_time.substring(11, 16) // "2025-11-04T08:00:00Z" -> "08:00"
-                console.log(`🔍 Comparando slot ${timeSlot} com API ${apiTime} (${apiSlot.start_time})`)
                 return apiTime === timeSlot
             })
             
@@ -247,8 +219,7 @@ export function Bookings() {
                 available: scheduleSlot?.available ?? true // Disponível por padrão se não encontrar na API
             } as TimeSlot & { available: boolean }
         })
-        
-        console.log('✅ Slots mapeados:', mappedSlots.length, mappedSlots)
+
         return mappedSlots
     }
 
@@ -418,41 +389,27 @@ export function Bookings() {
 
     // Carregar serviços
     const loadServices = async () => {
-        console.log('🚀 loadServices INICIADO')
         try {
             // Verificar se o usuário está logado
             if (!isLoggedIn()) {
-                console.error('❌ BookingsList: Usuário não está logado')
                 return
             }
             
             const userData = getUserData()
-            console.log('👤 userData:', userData)
             if (!userData.company_id) {
-                console.error('❌ Company ID não encontrado no userData')
                 throw new Error('Company ID não encontrado')
             }
             
-            console.log('📡 Bookings: Fazendo chamada para servicesService.getServices com company_id:', userData.company_id)
-            console.log('📡 Bookings: Parâmetros da chamada - company_id:', userData.company_id, 'limit:', 100)
             const response = await servicesService.getServices(userData.company_id, 1, 100) // page=1, limit=100
-            console.log('📊 Bookings: Resposta completa da API:', response)
-            console.log('📊 Bookings: response.services tipo:', typeof response.services)
-            console.log('📊 Bookings: response.services valor:', response.services)
-            console.log('📊 Bookings: Total de serviços recebidos:', response.services?.length || 0)
             
             if (!response.services || response.services.length === 0) {
-                console.warn('⚠️ Nenhum serviço retornado da API')
                 setServices([])
                 return
             }
             
             const activeServices = response.services.filter(service => service.active)
-            console.log('📊 Bookings: Serviços ativos filtrados:', activeServices.length)
-            console.log('📊 Bookings: Lista de serviços ativos:', activeServices)
             
             setServices(activeServices)
-            console.log('✅ setServices executado com', activeServices.length, 'serviços')
         } catch (error) {
             console.error('💥 Erro ao carregar serviços:', error)
         }
@@ -582,34 +539,24 @@ export function Bookings() {
     }
 
     useEffect(() => {
-        console.log('🔄 useEffect executado - selectedDate:', selectedDate)
         if (!authLoading) {
-            loadServices() // Carregar serviços também
-            loadSchedule(selectedDate) // Carregar schedule da data selecionada
+            loadServices()
+            loadSchedule(selectedDate)
         }
     }, [pagination.page, selectedDate, authLoading])
 
-    // Debug: Monitorar mudanças nos timeSlots
     useEffect(() => {
-        console.log('🔍 timeSlots atualizados:', timeSlots.length, 'slots')
-        console.log('🔍 timeSlots detalhes:', timeSlots)
     }, [timeSlots])
 
-    // Debug: Monitorar mudanças nos services
     useEffect(() => {
-        console.log('🔍 services atualizados:', services.length, 'serviços')
-        console.log('🔍 services detalhes:', services)
     }, [services])
 
-    // Carregar serviços quando o modal abrir
     useEffect(() => {
         if (isNewBookingModalOpen) {
-            console.log('🔄 Modal aberto - carregando serviços...')
             loadServices()
         }
     }, [isNewBookingModalOpen])
 
-    // Recarregar slots quando a data do modal mudar
     useEffect(() => {
         if (selectedService && isNewBookingModalOpen) {
             loadAvailableSlots(selectedService)

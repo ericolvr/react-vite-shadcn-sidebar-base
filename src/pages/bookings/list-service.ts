@@ -238,9 +238,7 @@ class BookingsListService {
 
     // Criar novo agendamento
     async createBooking(bookingData: CreateBookingRequest): Promise<Booking> {
-        try {
-            console.log('📝 Criando booking com dados:', bookingData)
-            
+        try {            
             const response: AxiosResponse<Booking> = await axios.post(
                 `${BASE_URL}/bookings`,
                 bookingData
@@ -292,14 +290,9 @@ class BookingsListService {
     // Buscar schedule completo do dia
     async getSchedule(companyId: number, date: string): Promise<ScheduleResponse> {
         try {
-            console.log(`📅 Buscando schedule para company_id: ${companyId}, date: ${date}`)
             const response: AxiosResponse<ScheduleResponse> = await axios.get(
                 `${BASE_URL}/availability/schedule?company_id=${companyId}&date=${date}`
             )
-            
-            console.log('📊 Resposta da API schedule:', response.data)
-            console.log(`🕐 Total de slots encontrados: ${response.data.schedule.length}`)
-            console.log(`✅ Slots disponíveis: ${response.data.schedule.filter(slot => slot.available).length}`)
             
             return response.data
         } catch (error: any) {

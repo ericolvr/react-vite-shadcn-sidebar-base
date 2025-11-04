@@ -28,13 +28,11 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
             }
 
             try {
-                console.log('⏳ Iniciando busca com query:', searchQuery)
                 setLoading(true)
                 const results = await vehicleService.searchForBook(1, searchQuery)
-                console.log('✅ Resultados recebidos no componente:', results)
+
                 setVehicles(results)
             } catch (error) {
-                console.error('💥 Erro no componente ao buscar veículos:', error)
                 setVehicles([])
             } finally {
                 setLoading(false)
@@ -42,7 +40,6 @@ const CustomerSelector: React.FC<CustomerSelectorProps> = ({
             }
         }
 
-        console.log('⏰ Configurando debounce para query:', searchQuery)
         const debounceTimer = setTimeout(searchVehicles, 300)
         return () => {
             console.log('🧹 Limpando timer anterior')

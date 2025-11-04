@@ -140,24 +140,82 @@ export default function AddBookings({ isOpen, onClose, onBookingCreated, selecte
                 throw new Error('Company ID não encontrado')
             }
 
-            // Criar data/hora do agendamento
-            const [hours, minutes] = selectedTimeSlot.split(':')
-            const scheduledDateTime = new Date(modalSelectedDate)
-            scheduledDateTime.setHours(parseInt(hours), parseInt(minutes), 0, 0)
-
+            // Criar data/hora do agendamento de forma mais robusta
+            console.log('SUBMIT - Iniciando criação do booking...')
+            console.log('SUBMIT - modalSelectedDate:', modalSelectedDate)
+            console.log('SUBMIT - selectedTimeSlot:', selectedTimeSlot)
+            
+            // Validar modalSelectedDate
+            if (!modalSelectedDate || isNaN(modalSelectedDate.getTime())) {
+                throw new Error('Data selecionada é inválida')
+            }
+            
+            // Extrair componentes da data selecionada
+            const year = modalSelectedDate.getFullYear()
+            const month = modalSelectedDate.getMonth()
+            const day = modalSelectedDate.getDate()
+            
+            console.log('SUBMIT - Componentes da data:', { year, month, day })
+            
+            // Processar selectedTimeSlot (pode estar em formato ISO ou HH:MM)
+            let timeString = selectedTimeSlot
+            
+            // Se está em formato ISO (2025-11-05T08:00:00Z), extrair apenas HH:MM
+            if (timeString.includes('T')) {
+                timeString = timeString.split('T')[1].substring(0, 5) // "08:00"
+            }
+            
+            console.log('SUBMIT - timeString processado:', timeString)
+            
+            // Validar formato HH:MM
+            if (!/^\d{2}:\d{2}$/.test(timeString)) {
+                throw new Error(`Formato de horário inválido: ${timeString}`)
+            }
+            
+            // Extrair hora e minuto do slot selecionado
+            const [hours, minutes] = timeString.split(':').map(Number)
+            
+            console.log('SUBMIT - hours:', hours, 'minutes:', minutes)
+            
+            // Validar valores
+            if (isNaN(hours) || isNaN(minutes) || hours < 0 || hours > 23 || minutes < 0 || minutes > 59) {
+                throw new Error(`Horário inválido: ${hours}:${minutes}`)
+            }
+            
+            // Criar nova data com componentes específicos
+            const scheduledDateTime = new Date(year, month, day, hours, minutes, 0, 0)
+            
+            console.log('SUBMIT - scheduledDateTime criado:', scheduledDateTime)
+            
+            // Validar se a data foi criada corretamente
+            if (isNaN(scheduledDateTime.getTime())) {
+                throw new Error('Erro ao criar data/hora do agendamento')
+            }
+            
+            // CORREÇÃO: Enviar horário local em formato ISO com timezone
+            // Formato: YYYY-MM-DDTHH:MM:SS-03:00 (ISO com timezone local)
+            const localDateTimeString = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}T${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:00-03:00`
+        
             const bookingData: CreateBookingRequest = {
                 company_id: userData.company_id,
-                customer_id: selectedCustomer.id,
+                client_id: selectedCustomer.id,
                 vehicle_id: selectedVehicle.id,
                 service_ids: [parseInt(selectedService)],
-                scheduled_at: scheduledDateTime.toISOString(),
+                status: "reserved",
+                scheduled_at: localDateTimeString,
                 notes: `Agendamento criado via sistema - ${selectedTimeSlot}`
             }
 
-            console.log('📝 AddBookings: Criando booking com dados:', bookingData)
+            console.log('🚀 POST /bookings - DADOS ENVIADOS:')
+            console.log('POST - Horário selecionado pelo usuário:', selectedTimeSlot)
+            console.log('POST - Horário processado (HH:MM):', timeString)
+            console.log('POST - Data local criada:', scheduledDateTime)
+            console.log('POST - Data convertida para ISO (UTC):', scheduledDateTime.toISOString())
+            console.log('POST - scheduled_at enviado para backend:', bookingData.scheduled_at)
+            console.log('POST - Diferença de timezone:', scheduledDateTime.getTimezoneOffset(), 'minutos')
+            console.log('POST - Body completo do POST:', JSON.stringify(bookingData, null, 2))
             
-            const newBooking = await bookingsListService.createBooking(bookingData)
-            console.log('✅ AddBookings: Booking criado com sucesso:', newBooking)
+            await bookingsListService.createBooking(bookingData)
             
             // Limpar formulário
             setSelectedService('')
@@ -239,7 +297,7 @@ export default function AddBookings({ isOpen, onClose, onBookingCreated, selecte
                                 </Select>
                             </div>
 
-                            {/* Botões dos Dias da Semana */}
+
                             <div className="flex gap-1">
                                 {generateWeekDays().map((day, index) => {
                                     const isSelected = day.toDateString() === modalSelectedDate.toDateString()
@@ -402,7 +460,19 @@ export default function AddBookings({ isOpen, onClose, onBookingCreated, selecte
                     {/* Seletor de Cliente - aparece apenas quando horário for selecionado */}
                     {selectedTimeSlot && (
                         <CustomerSelector 
-                            onVehicleSelect={setSelectedVehicle}
+                            onVehicleSelect={(vehicle) => {
+                                console.log('🚗 Veículo selecionado:', vehicle)
+                                setSelectedVehicle(vehicle)
+                                
+                                // Definir cliente automaticamente baseado no veículo
+                                const customer = {
+                                    id: vehicle.client_id,
+                                    name: vehicle.client_name,
+                                    phone: vehicle.client_phone
+                                }
+                                console.log('👤 Cliente definido automaticamente:', customer)
+                                setSelectedCustomer(customer)
+                            }}
                             selectedVehicle={selectedVehicle || undefined}
                         />
                     )}

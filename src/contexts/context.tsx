@@ -26,9 +26,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
     const initializeAuth = async () => {
         try {
-            setIsLoading(true)
-            console.log('🔄 Contexto: Inicializando autenticação...')
-            
+            setIsLoading(true)            
             // Verificar se existe token no sessionStorage
             const token = sessionStorage.getItem('auth_token')
             const timestamp = sessionStorage.getItem('auth_timestamp')
@@ -43,7 +41,6 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 const expectedHash = btoa(token.slice(-10))
                 
                 if (sessionAge < maxAge && hash === expectedHash) {
-                    console.log('✅ Contexto: Sessão válida encontrada')
                     // Apenas o token é restaurado, dados do usuário precisam ser recarregados
                     setAuthState({
                         user: null, // Será preenchido quando necessário
@@ -51,14 +48,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
                         isAuthenticated: true
                     })
                 } else {
-                    console.log('⏰ Contexto: Sessão expirada ou inválida')
                     clearSession()
                 }
-            } else {
-                console.log('🚫 Contexto: Nenhuma sessão encontrada')
             }
         } catch (error) {
-            console.error('❌ Contexto: Erro ao inicializar autenticação:', error)
+
             clearSession()
         } finally {
             setIsLoading(false)
@@ -158,14 +152,10 @@ export function AuthProvider({ children }: AuthProviderProps) {
         }
     }
 
-    const getUserData = () => {
-        console.log('🔍 getUserData: authState:', authState)
-        
+    const getUserData = () => {        
         // Se temos um token, extrair dados dele (mais seguro)
         if (authState.token) {
-            console.log('🔍 getUserData: Token encontrado, decodificando...')
             const jwtPayload = decodeJWT(authState.token)
-            console.log('🔍 getUserData: JWT payload:', jwtPayload)
             
             if (jwtPayload) {
                 const userData = {
@@ -177,14 +167,11 @@ export function AuthProvider({ children }: AuthProviderProps) {
                     isAuthenticated: authState.isAuthenticated,
                     token: authState.token
                 }
-                console.log('🔍 getUserData: Dados finais:', userData)
                 return userData
             } else {
-                console.error('❌ getUserData: Erro ao decodificar JWT')
+                return null
             }
-        } else {
-            console.warn('⚠️ getUserData: Nenhum token encontrado')
-        }
+        } 
         
         // Fallback para dados do estado (compatibilidade)
         return {
@@ -199,14 +186,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
 
     // Função para verificar se está logado
-    const isLoggedIn = (): boolean => {
-        console.log('🔍 isLoggedIn: Verificando estado de login...')
-        console.log('🔍 isLoggedIn: authState.isAuthenticated:', authState.isAuthenticated)
-        console.log('🔍 isLoggedIn: authState.token:', authState.token ? 'Presente' : 'Ausente')
-        
-        const isAuthenticated = authState.isAuthenticated && !!authState.token
-        console.log('🔍 isLoggedIn: Resultado final:', isAuthenticated)
-        
+    const isLoggedIn = (): boolean => {        
+        const isAuthenticated = authState.isAuthenticated && !!authState.token        
         return isAuthenticated
     }
 
