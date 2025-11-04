@@ -29,7 +29,7 @@ export const columns = (
                 </Button>
             )
         },
-        cell: ({ row }) => <div className='pl-3 text-[15px]'>{row.getValue('plate')}</div>,
+        cell: ({ row }) => <div className='pl-3 text-[14px] font-semibold'>{row.getValue('plate')}</div>,
     },
     {
         accessorKey: 'model',

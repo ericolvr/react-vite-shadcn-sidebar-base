@@ -55,7 +55,7 @@ const VehiclesDrawer = ({ client }: { client: Client }) => {
         }
     }
 
-    // Carregar veículos automaticamente quando o drawer abrir
+
     React.useEffect(() => {
         loadVehicles()
     }, [client.id])
@@ -98,17 +98,6 @@ const VehiclesDrawer = ({ client }: { client: Client }) => {
                                                     {vehicle.plate}
                                                 </td>
                                             </tr>
-                                            <tr className={index < vehicles.length - 1 ? 'border-b border-gray-100' : ''}>
-                                                <td className="px-4 py-3 text-gray-900 w-1/2 border-r border-gray-100">
-                                                    {vehicle.brand}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-900 w-1/2">
-                                                    {vehicle.type === 'car' ? 'Carro' : 
-                                                     vehicle.type === 'motorcycle' ? 'Moto' : 
-                                                     vehicle.type === 'truck' ? 'Caminhão' : 
-                                                     vehicle.type}
-                                                </td>
-                                            </tr>
                                         </React.Fragment>
                                     ))}
                                 </tbody>
@@ -131,6 +120,25 @@ export const columns = (
     onEdit?: (id: string) => void
 ): ColumnDef<Client>[] => [
     {
+        accessorKey: 'name',
+        header: ({ column }) => {
+            return (
+                <Button
+                    variant='ghost'
+                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
+                    className='font-bold text-[12.5px] hover:bg-transparent'
+                >
+                    NOME
+                    <ArrowUpDown className='ml-2 h-4 w-4' />
+                </Button>
+            )
+        },
+        cell: ({ row }) => {
+            const name = row.getValue('name') as string
+            return <p className='pl-3 text-[15px] font-semibold'>{name}</p>
+        },
+    },
+    {
         accessorKey: 'phone',
         header: ({ column }) => {
             return (
@@ -149,38 +157,6 @@ export const columns = (
             // Formatar telefone: 11988259998 -> (11) 98825-9998
             const formatted = phone.replace(/(\d{2})(\d{4,5})(\d{4})/, '($1) $2-$3')
             return <div className='pl-3 text-[15px]'>{formatted}</div>
-        },
-    },
-    {
-        accessorKey: 'role',
-        header: ({ column }) => {
-            return (
-                <Button
-                    variant='ghost'
-                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-                    className='font-bold text-[12.5px] hover:bg-transparent'
-                >
-                    TIPO
-                    <ArrowUpDown className='ml-2 h-4 w-4' />
-                </Button>
-            )
-        },
-        cell: ({ row }) => {
-            const role = row.getValue('role') as number
-            const roleConfig = {
-                1: { label: 'Cliente' },
-                2: { label: 'VIP' },
-                3: { label: 'Premium' }
-            }
-            const config = roleConfig[role as keyof typeof roleConfig] || { label: 'Cliente' }
-            
-            return (
-                <div className='pl-3 text-[15px]'>
-                    <span className="text-black">
-                        {config.label}
-                    </span>
-                </div>
-            )
         },
     },
     {

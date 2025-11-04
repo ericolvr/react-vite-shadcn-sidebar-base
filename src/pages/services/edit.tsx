@@ -246,7 +246,7 @@ export function ServicesEdit() {
 										/>
 									</div>
 
-									<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+									<div className='grid grid-cols-1 md:grid-cols-2 gap-6 mt-6'>
 										<FormField
 											control={form.control}
 											name="duration"
@@ -300,7 +300,7 @@ export function ServicesEdit() {
 										/>
 									</div>
 
-									<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+									<div className='grid grid-cols-1 md:grid-cols-2 gap-6 mt-6'>
 										<FormField
 											control={form.control}
 											name="points"
@@ -333,12 +333,10 @@ export function ServicesEdit() {
 											control={form.control}
 											name="active"
 											render={({ field }) => (
-												<FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
-													<div className="space-y-0.5">
+												<FormItem className="flex flex-row items-center justify-between rounded-lg  px-4  bg-[#F9F9F9]">
+													<div>
 														<FormLabel className="font-inter font-medium">Serviço Ativo</FormLabel>
-														<div className="text-sm text-muted-foreground">
-															Serviço disponível para agendamento
-														</div>
+
 													</div>
 													<FormControl>
 														<Switch
@@ -379,7 +377,7 @@ export function ServicesEdit() {
 									<Button 
 										type="submit"
 										disabled={isLoading}
-										className='bg-[#317CE5] hover:bg-[#2563eb] font-inter disabled:opacity-50 disabled:cursor-not-allowed'
+										className='bg-gradient-to-r from-[#8E30F4] to-[#4645F8] hover:from-[#7C2BD9] hover:to-[#3B3FE6] text-white font-inter disabled:opacity-50 disabled:cursor-not-allowed'
 									>
 										{isLoading ? 'Atualizando...' : 'Atualizar'}
 									</Button>

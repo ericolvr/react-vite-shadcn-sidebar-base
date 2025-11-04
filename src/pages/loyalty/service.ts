@@ -79,17 +79,14 @@ class LoyaltyService {
 	// Buscar todas as contas de fidelidade
 	async getLoyaltyAccounts(page: number = 1, limit: number = 20): Promise<LoyaltyAccountsListResponse> {
 		try {
-			// Converter page para offset (page 1 = offset 0)
 			const offset = (page - 1) * limit
 			
 			const response: AxiosResponse<LoyaltyAccountsListResponse> = await axios.get(
 				`${BASE_URL}/loyalty/accounts?limit=${limit}&offset=${offset}`
 			)
 			
-			// Garantir que accounts seja sempre um array
 			const accounts = response.data?.accounts || []
 			
-			// Simular resposta com page para compatibilidade
 			const responseData = {
 				accounts: accounts,
 				total: response.data?.total || 0,
@@ -268,7 +265,7 @@ class LoyaltyService {
 			// Calcular estatísticas manualmente
 			const totalAccounts = accounts.length
 			const activeAccounts = accounts.filter(acc => acc.status === 'active').length
-			const totalPointsCirculation = accounts.reduce((sum, acc) => sum + acc.current_points, 0)
+			const totalPointsCirculation = accounts.reduce((sum, acc) => sum + ((acc.total_earned || 0) - (acc.total_redeemed || 0)), 0)
 			const totalEarned = accounts.reduce((sum, acc) => sum + acc.total_earned, 0)
 			const totalRedeemed = accounts.reduce((sum, acc) => sum + acc.total_redeemed, 0)
 			
@@ -277,7 +274,7 @@ class LoyaltyService {
 			const pointsRedeemedMonth = Math.floor(totalRedeemed * 0.3)
 			
 			// Calcular engajamento (contas com pontos > 0)
-			const engagedAccounts = accounts.filter(acc => acc.current_points > 0).length
+			const engagedAccounts = accounts.filter(acc => ((acc.total_earned || 0) - (acc.total_redeemed || 0)) > 0).length
 			const engagementRate = totalAccounts > 0 ? (engagedAccounts / totalAccounts) * 100 : 0
 			
 			const stats: LoyaltyStatsResponse = {

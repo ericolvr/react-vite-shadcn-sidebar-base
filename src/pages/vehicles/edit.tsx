@@ -194,8 +194,6 @@ export function VehiclesEdit() {
 					<div className='flex-1 bg-white'>
 						<Form {...form}>
 							<form onSubmit={form.handleSubmit(onSubmit)} className='space-y-6'>
-								
-								{/* Informações do Veículo */}
 								<div className='space-y-4'>
 									<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
 										<FormField
@@ -235,7 +233,7 @@ export function VehiclesEdit() {
 										/>
 									</div>
 
-									<div className='grid grid-cols-1 md:grid-cols-2 gap-6'>
+									<div className='grid grid-cols-1 md:grid-cols-2 gap-6 mt-6'>
 										<FormField
 											control={form.control}
 											name="plate"
@@ -323,7 +321,7 @@ export function VehiclesEdit() {
 									<Button 
 										type="submit"
 										disabled={isLoading}
-										className='bg-[#317CE5] hover:bg-[#2563eb] font-inter disabled:opacity-50 disabled:cursor-not-allowed'
+										className='bg-gradient-to-r from-[#8E30F4] to-[#4645F8] hover:from-[#7C2BD9] hover:to-[#3B3FE6] text-white font-inter disabled:opacity-50 disabled:cursor-not-allowed'
 									>
 										{isLoading ? 'Atualizando...' : 'Atualizar'}
 									</Button>

@@ -41,7 +41,7 @@ export const columns = (
                     onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
                     className='font-bold text-[12.5px] hover:bg-transparent'
                 >
-                    PREÇO
+                    PREÇO R$
                     <ArrowUpDown className='ml-2 h-4 w-4' />
                 </Button>
             )
@@ -50,7 +50,7 @@ export const columns = (
             const price = row.getValue('price') as number
             return (
                 <div className='pl-3 text-[15px]'>
-                    R$ {price.toFixed(2).replace('.', ',')}
+                    {price.toFixed(2).replace('.', ',')}
                 </div>
             )
         },
@@ -72,39 +72,6 @@ export const columns = (
         cell: ({ row }) => {
             const duration = row.getValue('duration') as number
             return <div className='pl-3 text-[15px]'>{duration} min</div>
-        },
-    },
-    {
-        accessorKey: 'vehicle_type',
-        header: ({ column }) => {
-            return (
-                <Button
-                    variant='ghost'
-                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-                    className='font-bold text-[12.5px] hover:bg-transparent'
-                >
-                    TIPO DE VEÍCULO
-                    <ArrowUpDown className='ml-2 h-4 w-4' />
-                </Button>
-            )
-        },
-        cell: ({ row }) => {
-            const vehicleType = row.getValue('vehicle_type') as string
-            const vehicleConfig = {
-                'car': { label: 'Carro', bgColor: 'bg-blue-100', textColor: 'text-blue-800' },
-                'motorcycle': { label: 'Moto', bgColor: 'bg-green-100', textColor: 'text-green-800' },
-                'truck': { label: 'Caminhão', bgColor: 'bg-orange-100', textColor: 'text-orange-800' },
-                'all': { label: 'Todos', bgColor: 'bg-purple-100', textColor: 'text-purple-800' }
-            }
-            const config = vehicleConfig[vehicleType as keyof typeof vehicleConfig] || { label: vehicleType, bgColor: 'bg-gray-100', textColor: 'text-gray-800' }
-            
-            return (
-                <div className='pl-3 text-[15px]'>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${config.bgColor} ${config.textColor}`}>
-                        {config.label}
-                    </span>
-                </div>
-            )
         },
     },
     {
@@ -159,15 +126,6 @@ export const columns = (
             const service = row.original
             return (
                 <div className='flex justify-end items-center gap-2 mr-3'>
-                    {onView && (
-                        <div 
-                            className='h-10 w-10 flex items-center justify-center rounded hover:bg-muted cursor-pointer'
-                            title='Visualizar Serviço'
-                            onClick={() => onView(service.id?.toString() || '')}
-                        >
-                            <Eye className='h-5 w-5' strokeWidth={1.5} />
-                        </div>
-                    )}
                     {onEdit && (
                         <div 
                             className='h-10 w-10 flex items-center justify-center rounded hover:bg-muted cursor-pointer'

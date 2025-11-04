@@ -73,14 +73,18 @@ export function LoyaltyDashboard() {
             
             // Processar top clientes (ordenar por pontos)
             const sortedAccounts = accountsResponse.accounts
-                .sort((a, b) => b.current_points - a.current_points)
+                .map(account => ({
+                    ...account,
+                    calculated_points: (account.total_earned || 0) - (account.total_redeemed || 0)
+                }))
+                .sort((a, b) => b.calculated_points - a.calculated_points)
                 .slice(0, 5)
                 .map(account => ({
                     id: account.id,
                     name: account.client_name,
                     phone: account.client_phone,
-                    points: account.current_points,
-                    level: account.current_points > 1000 ? 'Gold' : account.current_points > 500 ? 'Silver' : 'Bronze',
+                    points: account.calculated_points,
+                    level: account.calculated_points > 1000 ? 'Gold' : account.calculated_points > 500 ? 'Silver' : 'Bronze',
                     totalEarned: account.total_earned
                 }))
             

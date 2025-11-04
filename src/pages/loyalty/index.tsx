@@ -25,7 +25,7 @@ export function Loyalty() {
 		{ key: 'id', label: 'ID' },
 		{ key: 'client_name', label: 'Cliente' },
 		{ key: 'client_phone', label: 'Telefone' },
-		{ key: 'current_points', label: 'Pontos Atuais' },
+		{ key: 'calculated_points', label: 'Pontos Atuais' },
 		{ key: 'total_earned', label: 'Total Ganho' },
 		{ key: 'total_redeemed', label: 'Total Resgatado' },
 		{ key: 'status', label: 'Status' },
@@ -41,7 +41,14 @@ export function Loyalty() {
 			console.log(`🔍 Fazendo chamada: page=${page}, limit=${limit}, offset=${offset}`)
 			const response = await loyaltyService.getLoyaltyAccounts(page, limit)
 			console.log('📊 Resposta da API:', response)
-			setAccounts(response.accounts || [])
+			
+			// Adicionar campo calculated_points para cada conta
+			const accountsWithCalculatedPoints = (response.accounts || []).map(account => ({
+				...account,
+				calculated_points: (account.total_earned || 0) - (account.total_redeemed || 0)
+			}))
+			
+			setAccounts(accountsWithCalculatedPoints)
 			setPagination({
 				page: response.page || 1,
 				limit: response.limit || 20,

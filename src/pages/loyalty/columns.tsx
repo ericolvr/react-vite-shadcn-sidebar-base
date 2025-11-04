@@ -57,7 +57,6 @@ const VehiclesDrawer = ({ account }: { account: LoyaltyAccount }) => {
         }
     }
 
-    // Carregar veículos automaticamente quando o drawer abrir
     React.useEffect(() => {
         loadVehicles()
     }, [account.id])
@@ -99,17 +98,6 @@ const VehiclesDrawer = ({ account }: { account: LoyaltyAccount }) => {
                                                 </td>
                                                 <td className="px-4 py-3 text-gray-900 font-medium w-1/2">
                                                     {vehicle.plate || 'Placa não informada'}
-                                                </td>
-                                            </tr>
-                                            <tr className={index < vehicles.length - 1 ? 'border-b border-gray-100' : ''}>
-                                                <td className="px-4 py-3 text-gray-900 w-1/2 border-r border-gray-100">
-                                                    {vehicle.brand || 'Marca não informada'}
-                                                </td>
-                                                <td className="px-4 py-3 text-gray-900 w-1/2">
-                                                    {vehicle.type === 'car' ? 'Carro' : 
-                                                     vehicle.type === 'motorcycle' ? 'Moto' : 
-                                                     vehicle.type === 'truck' ? 'Caminhão' : 
-                                                     vehicle.type || 'Tipo não informado'}
                                                 </td>
                                             </tr>
                                         </React.Fragment>
@@ -178,7 +166,7 @@ const PointsModal = ({
                         {type === 'add' ? 'Adicionar Pontos' : 'Resgatar Pontos'}
                     </DialogTitle>
                     <DialogDescription>
-                        {account.client_name} - Pontos atuais: {account.current_points}
+                        {account.client_name} - Pontos atuais: {(account.total_earned || 0) - (account.total_redeemed || 0)}
                     </DialogDescription>
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4">
@@ -191,7 +179,7 @@ const PointsModal = ({
                             onChange={(e) => setPoints(e.target.value)}
                             placeholder="Digite a quantidade"
                             min="1"
-                            max={type === 'redeem' ? account.current_points : undefined}
+                            max={type === 'redeem' ? (account.total_earned || 0) - (account.total_redeemed || 0) : undefined}
                             required
                         />
                     </div>
@@ -276,14 +264,13 @@ export const columns = (
             )
         },
         cell: ({ row }) => {
-            const points = row.getValue('points') as number
-            // Verificar se points existe antes de formatar
-            if (points === undefined || points === null) {
-                return <div className='pl-3 text-[15px] font-semibold text-black'>0 pts</div>
-            }
+            const totalEarned = row.getValue('total_earned') as number || 0
+            const totalRedeemed = row.original.total_redeemed || 0
+            const currentPoints = totalEarned - totalRedeemed
+            
             return (
-                <div className='pl-3 text-[15px] font-semibold text-black'>
-                    {points.toLocaleString()} pts
+                <div className='pl-3 text-[15px] text-black'>
+                    {currentPoints.toLocaleString()} pts
                 </div>
             )
         },
@@ -304,7 +291,6 @@ export const columns = (
         },
         cell: ({ row }) => {
             const points = row.getValue('total_earned') as number
-            // Verificar se points existe antes de formatar
             if (points === undefined || points === null) {
                 return <div className='pl-3 text-[15px] text-black'>0 pts</div>
             }
@@ -315,39 +301,7 @@ export const columns = (
             )
         },
     },
-    {
-        accessorKey: 'level',
-        header: ({ column }) => {
-            return (
-                <Button
-                    variant='ghost'
-                    onClick={() => column.toggleSorting(column.getIsSorted() === 'asc')}
-                    className='font-bold text-[12.5px] hover:bg-transparent'
-                >
-                    NÍVEL
-                    <ArrowUpDown className='ml-2 h-4 w-4' />
-                </Button>
-            )
-        },
-        cell: ({ row }) => {
-            const level = row.getValue('level') as string
-            const levelConfig = {
-                'bronze': { label: 'Bronze', color: 'text-amber-600' },
-                'silver': { label: 'Prata', color: 'text-gray-600' },
-                'gold': { label: 'Ouro', color: 'text-yellow-600' },
-                'platinum': { label: 'Platina', color: 'text-purple-600' }
-            }
-            const config = levelConfig[level as keyof typeof levelConfig] || { label: 'Bronze', color: 'text-amber-600' }
-            
-            return (
-                <div className='pl-3 text-[15px]'>
-                    <span className={`font-semibold ${config.color}`}>
-                        {config.label}
-                    </span>
-                </div>
-            )
-        },
-    },
+    
     {
         id: 'actions',
         enableHiding: false,
@@ -358,7 +312,6 @@ export const columns = (
 
             return (
                 <div className='flex justify-end items-center gap-2 mr-3'>
-                    {/* Histórico de Pontos */}
                     <Sheet>
                         <SheetTrigger asChild>
                             <div 
