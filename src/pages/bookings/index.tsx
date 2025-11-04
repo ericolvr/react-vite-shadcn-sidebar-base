@@ -201,11 +201,9 @@ export function Bookings() {
         const mappedSlots = generatedSlots.map(timeSlot => {
             // Procurar slot correspondente no schedule da API
             const scheduleSlot = scheduleSlots.find(apiSlot => {
-                const apiTime = new Date(apiSlot.start_time).toLocaleTimeString('pt-BR', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    timeZone: 'America/Sao_Paulo'
-                })
+                // Extrair apenas HH:MM da string UTC (ignorar timezone)
+                const apiTime = apiSlot.start_time.substring(11, 16) // "2025-11-04T08:00:00Z" -> "08:00"
+                console.log(`🔍 Comparando slot ${timeSlot} com API ${apiTime} (${apiSlot.start_time})`)
                 return apiTime === timeSlot
             })
             
@@ -586,7 +584,6 @@ export function Bookings() {
     useEffect(() => {
         console.log('🔄 useEffect executado - selectedDate:', selectedDate)
         if (!authLoading) {
-            loadData()
             loadServices() // Carregar serviços também
             loadSchedule(selectedDate) // Carregar schedule da data selecionada
         }
@@ -624,14 +621,12 @@ export function Bookings() {
     // Auto-refresh a cada 30 segundos
     useEffect(() => {
         const interval = setInterval(() => {
-            loadData(true) // isRefresh = true para não mostrar loading
+            loadSchedule(selectedDate) // Usar loadSchedule em vez de loadData
         }, 30000) // 30 segundos
 
         // Cleanup do interval quando o componente for desmontado
-        return () => {
-            clearInterval(interval)
-        }
-    }, []) // Dependência vazia para executar apenas uma vez
+        return () => clearInterval(interval)
+    }, [selectedDate])   
 
     // Função para criar novo booking
     const handleCreateBooking = async () => {
